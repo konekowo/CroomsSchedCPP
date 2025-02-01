@@ -1,8 +1,11 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #define USE_TASKBAR_LEFT_POSITION false
+#include <string>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_ttf/SDL_ttf.h>
+
+#include "Text_util.h"
 
 
 static SDL_Window *window = nullptr;
@@ -12,6 +15,9 @@ static int windowX = 0;
 static int windowY = 0;
 static int currentWinX;
 static int currentWinY;
+static TTF_Font* currentFont;
+static SDL_Color fontColor = { 255, 255, 255, 255 };
+static SDL_Color fontColorSeconds = { 255, 255, 255, 100 };
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -29,7 +35,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
 
     if (!SDL_CreateWindowAndRenderer("Crooms Bell Schedule", 250, 47,
-                                     SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_NOT_FOCUSABLE
+                                     SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS |
+                                     SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_NOT_FOCUSABLE
                                      , &window, &renderer)) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -45,10 +52,19 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
     windowY = *const_cast<int *>(&displayMode->h) - 47;
 
+    currentFont = TTF_OpenFont("./assets/fonts/SegoeUI.ttf", 32);
+    if (currentFont == nullptr) {
+        SDL_Log("TTF_OpenFont() Error: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
+
+    TextUtil_init(renderer);
+
     SDL_SetWindowPosition(window, windowX, windowY);
 
     SDL_RaiseWindow(window);
 
+    SDL_Log("Successfully loaded!");
     return SDL_APP_CONTINUE;
 }
 
@@ -61,6 +77,8 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     }
     return SDL_APP_CONTINUE;
 }
+
+
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_RaiseWindow(window);
@@ -76,13 +94,22 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_RenderClear(renderer);
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderDebugText(renderer, 5, 5, "Hello World!");
+
+    RenderText(currentFont, "display.dayType", "Today is a NORMAL day.", 10, 5, fontColor, 0.415f);
+    SDL_FRect classTimeLeftDimensions = RenderText(currentFont,
+        "display.classTimeLeft.HrsMins", "English, Time Left: 45", 10, 20, fontColor, 0.415f);
+    RenderText(currentFont, "display.classTimeLeft.Seconds", ":20",
+        classTimeLeftDimensions.x + classTimeLeftDimensions.w, classTimeLeftDimensions.y, fontColorSeconds, 0.415f);
+
 
     SDL_RenderPresent(renderer);
 
-    SDL_Delay(100);
+    SDL_Delay(200);
     return SDL_APP_CONTINUE;
 }
 
+
+
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+    TTF_Quit();
 }
