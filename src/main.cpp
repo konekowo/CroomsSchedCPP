@@ -8,6 +8,8 @@ static SDL_Renderer *renderer = nullptr;
 
 static int windowX = 0;
 static int windowY = 0;
+static int currentWinX;
+static int currentWinY;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -49,8 +51,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_RaiseWindow(window);
-    int currentWinX;
-    int currentWinY;
     if (SDL_GetWindowPosition(window, &currentWinX, &currentWinY)) {
         if (currentWinX != windowX && currentWinY != windowY) {
             SDL_SetWindowPosition(window, windowX, windowY);
