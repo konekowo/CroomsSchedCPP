@@ -1,7 +1,9 @@
 #define SDL_MAIN_USE_CALLBACKS 1
-#include <thread>
+#define USE_TASKBAR_LEFT_POSITION false
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3_ttf/SDL_ttf.h>
+
 
 static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
@@ -17,10 +19,16 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
+    if (!TTF_Init()) {
+        SDL_Log("Couldn't initialize SDL_ttf: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
+
     SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "true");
     SDL_SetHint(SDL_HINT_APP_NAME, "Crooms Bell Schedule");
 
-    if (!SDL_CreateWindowAndRenderer("Crooms Bell Schedule", 250, 45,
+
+    if (!SDL_CreateWindowAndRenderer("Crooms Bell Schedule", 250, 47,
                                      SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_NOT_FOCUSABLE
                                      , &window, &renderer)) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
@@ -29,8 +37,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
     const SDL_DisplayMode *displayMode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window));
 
-    windowX = *((int *) (&displayMode->w)) - 550;
-    windowY = *((int *) (&displayMode->h)) - 45;
+#if (defined(USE_TASKBAR_LEFT_POSITION) && USE_TASKBAR_LEFT_POSITION == true)
+    windowX = *const_cast<int *>(&displayMode->w) - 550;
+#else
+    windowX = 0;
+#endif
+
+    windowY = *const_cast<int *>(&displayMode->h) - 47;
 
     SDL_SetWindowPosition(window, windowX, windowY);
 
@@ -63,7 +76,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_RenderClear(renderer);
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderDebugText(renderer, 0, 5, "Hello World!");
+    SDL_RenderDebugText(renderer, 5, 5, "Hello World!");
 
     SDL_RenderPresent(renderer);
 

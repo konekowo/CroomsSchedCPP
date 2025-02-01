@@ -10,8 +10,10 @@ set(CMAKE_CXX_STANDARD 23)
 
 # This assumes the SDL source is available in vendored/SDL
 add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/SDL_ttf EXCLUDE_FROM_ALL)
+
 
 add_executable(CroomsSchedCPP WIN32 src/main.cpp)
 
-# Link to the actual SDL3 library.
 target_link_libraries(CroomsSchedCPP PRIVATE SDL3::SDL3)
+target_link_libraries(CroomsSchedCPP PRIVATE SDL3_ttf::SDL3_ttf)
