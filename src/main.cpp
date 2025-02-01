@@ -6,6 +6,9 @@
 static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
 
+static int windowX = 0;
+static int windowY = 0;
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
@@ -13,6 +16,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     }
 
     SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "true");
+    SDL_SetHint(SDL_HINT_APP_NAME, "Crooms Bell Schedule");
 
     if (!SDL_CreateWindowAndRenderer("Crooms Bell Schedule", 250, 45,
                                      SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_NOT_FOCUSABLE
@@ -23,7 +27,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
     const SDL_DisplayMode *displayMode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window));
 
-    SDL_SetWindowPosition(window, *((int *) (&displayMode->w)) - 550, *((int *) (&displayMode->h)) - 45);
+    windowX = *((int *) (&displayMode->w)) - 550;
+    windowY = *((int *) (&displayMode->h)) - 45;
+
+    SDL_SetWindowPosition(window, windowX, windowY);
 
     SDL_RaiseWindow(window);
 
@@ -42,6 +49,15 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_RaiseWindow(window);
+    int currentWinX;
+    int currentWinY;
+    if (SDL_GetWindowPosition(window, &currentWinX, &currentWinY)) {
+        if (currentWinX != windowX && currentWinY != windowY) {
+            SDL_SetWindowPosition(window, windowX, windowY);
+            SDL_Log("Window moved back to correct position");
+        }
+    }
+    SDL_SetWindowPosition(window, windowX, windowY);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 
     SDL_RenderClear(renderer);
