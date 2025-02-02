@@ -30,5 +30,8 @@ void DestroyText(const char* textKey) {
     SDL_Texture* texture = textureMap[textKey];
     if (texture != nullptr) {
         SDL_DestroyTexture(texture);
+        texture = nullptr;
+        textureMap[textKey] = nullptr;
+        textureMap.erase(textKey);
     }
 }
