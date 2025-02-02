@@ -9,7 +9,6 @@
 #include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
 #include <string>
-#include <tray.hpp>
 
 #include "Sched_util.h"
 #include "Text_util.h"
@@ -31,7 +30,6 @@ static const char *lastEvent = "";
 static int lastHoursLeft = 0;
 static int lastMinsLeft = 0;
 static int lastSecsLeft = 0;
-static Tray::Tray tray;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -89,7 +87,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
             to_string(schedule["status"]).c_str());
         return SDL_APP_FAILURE;
     }
-    tray.run();
 
     SDL_Log("Successfully loaded!");
     return SDL_APP_CONTINUE;
@@ -108,7 +105,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
-    tray.update();
     SDL_RaiseWindow(window);
     if (SDL_GetWindowPosition(window, &currentWinX, &currentWinY)) {
         if (currentWinX != windowX && currentWinY != windowY) {
