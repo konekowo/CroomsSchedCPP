@@ -21,15 +21,11 @@ static int windowX = 0;
 static int windowY = 0;
 static int currentWinX;
 static int currentWinY;
-static TTF_Font* currentFont;
-static SDL_Color fontColor = { 255, 255, 255, 255 };
-static SDL_Color fontColorSeconds = { 255, 255, 255, 100 };
-static json schedule = nullptr;
-static std::string lastDayType = "";
-static const char *lastEvent = "";
-static int lastHoursLeft = 0;
-static int lastMinsLeft = 0;
-static int lastSecsLeft = 0;
+static TTF_Font *currentFont;
+static SDL_Color fontColor = {255, 255, 255, 255};
+static SDL_Color fontColorSeconds = {255, 255, 255, 100};
+static Schedule *schedule = nullptr;
+static TextManager *textManager = nullptr;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -46,9 +42,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     SDL_SetHint(SDL_HINT_APP_NAME, "Crooms Bell Schedule");
 
     if (!SDL_CreateWindowAndRenderer("Crooms Bell Schedule", WINDOW_WIDTH, WINDOW_HEIGHT,
-                                     SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS |
-                                     SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_NOT_FOCUSABLE
-                                     , &window, &renderer)) {
+                                     SDL_WINDOW_TRANSPARENT | SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP |
+                                             SDL_WINDOW_NOT_FOCUSABLE,
+                                     &window, &renderer)) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -68,7 +64,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    TextUtil_init(renderer);
+    textManager = new TextManager(renderer);
 
     SDL_SetWindowPosition(window, windowX, windowY);
 
@@ -80,15 +76,17 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    schedule = json::parse(r.text);
+    const auto jsonSchedule = json::parse(r.text);
+    schedule = new Schedule(jsonSchedule);
 
-    if (schedule["status"] != "OK") {
+    if (schedule->GetStatus() != "OK" && schedule != nullptr) {
         SDL_Log("Failed to fetch schedule! Error: Expected \"OK\" in JSON file status property, but got %s instead.",
-            to_string(schedule["status"]).c_str());
+                schedule->GetStatus());
         return SDL_APP_FAILURE;
     }
 
     SDL_Log("Successfully loaded!");
+
     return SDL_APP_CONTINUE;
 }
 
@@ -101,7 +99,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     }
     return SDL_APP_CONTINUE;
 }
-
 
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
@@ -120,68 +117,44 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
-    const std::string dayType = to_string(schedule["data"]["msg"]);
-    const char *event = Sched_GetCurrentEvent(schedule, false);
-    const int hoursLeft = Sched_GetHrsLeft(schedule, false);
-    const int minsLeft = Sched_GetMinsLeft(schedule, false);
-    const int secsLeft = Sched_GetSecsLeft();
+    const std::string dayType = schedule->GetData().msg;
+    const std::string event = schedule->GetCurrentEvent() + ", Time Left: ";
+    const int timeLeft = schedule->GetSecondsLeft();
+    const int minsLeft = timeLeft / 60;
+    const int hoursLeft = timeLeft / 60 / 60;
+    const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
 
-    RenderText(currentFont, "display.dayType", dayType.substr(1, dayType.length() - 2).c_str(), 10, 5, fontColor, 0.43f);
+    textManager->RenderText(currentFont, "display.dayType", dayType, 10, 5, fontColor, 0.43f);
 
-    SDL_FRect eventName = RenderText(currentFont,
-        "display.classTimeLeft.eventName", (std::string(event) + ", Time Left: ").c_str(),
-        10, 22, fontColor, 0.43f);
+    // ReSharper disable once CppUseStructuredBinding
+    const SDL_FRect eventName =
+            textManager->RenderText(currentFont, "display.classTimeLeft.eventName", event, 10, 22, fontColor, 0.43f);
 
 
-
-    const char* hrsMins;
+    std::string hrsMins;
 
     if (hoursLeft != 0) {
-        hrsMins = (Sched_PadTime(hoursLeft, 2) + ":" +
-            Sched_PadTime(minsLeft, 2)).c_str();
+        hrsMins = (Sched_PadTime(hoursLeft, 2) + ":" + Sched_PadTime(minsLeft, 2));
     } else {
-        hrsMins = Sched_PadTime(minsLeft, 2).c_str();
+        hrsMins = Sched_PadTime(minsLeft, 2);
     }
 
-    SDL_FRect hrsMinsDimensions = RenderText(currentFont,
-        "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w, eventName.y, fontColor, 0.43f);
+    // ReSharper disable once CppUseStructuredBinding
+    const SDL_FRect hrsMinsDimensions =
+            textManager->RenderText(currentFont, "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w,
+                                    eventName.y, fontColor, 0.43f);
 
-    const char* secs = (":" + Sched_PadTime(secsLeft, 2)).c_str();
+    const char *secs = (":" + Sched_PadTime(secsLeft, 2)).c_str();
 
-    RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
-        hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f);
+    textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
+                            hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f);
 
 
     SDL_RenderPresent(renderer);
-
-    if (std::string(lastEvent) != std::string(event)) {
-        DestroyText("display.classTimeLeft.eventName");
-    }
-    if (lastDayType != dayType) {
-        DestroyText("display.dayType");
-    }
-    if (lastHoursLeft != hoursLeft) {
-        DestroyText("display.classTimeLeft.HrsMins");
-    }
-    if (lastMinsLeft != minsLeft) {
-        DestroyText("display.classTimeLeft.HrsMins");
-    }
-    if (lastSecsLeft != secsLeft) {
-        DestroyText("display.classTimeLeft.Seconds");
-    }
-
-    lastEvent = event;
-    lastDayType = dayType;
-    lastHoursLeft = hoursLeft;
-    lastMinsLeft = minsLeft;
-    lastSecsLeft = secsLeft;
 
     SDL_Delay(200);
     return SDL_APP_CONTINUE;
 }
 
 
-
-void SDL_AppQuit(void *appstate, SDL_AppResult result) {
-    TTF_Quit();
-}
+void SDL_AppQuit(void *appstate, SDL_AppResult result) { TTF_Quit(); }

@@ -6,7 +6,6 @@
 
 #include <chrono>
 #include <nlohmann/json.hpp>
-#include <nlohmann/json_fwd.hpp>
 using json = nlohmann::json;
 
 static const auto GMT_OFFSET = std::chrono::hours(-5);
@@ -47,36 +46,14 @@ static constexpr auto EVENT_END = 106;
 static constexpr auto EVENT_BREAK = 107;
 static constexpr auto EVENT_PSAT_SAT = 110;
 
-struct Sched_Time {
-    int hours;
-    int minutes;
-    int seconds;
-};
-
-struct Sched_Event {
-    int event;
-    int startH;
-    int startM;
-    int endH;
-    int endM;
-};
-
-Sched_Time Sched_GetCurrentTime() {
+int Sched_GetCurrentTimeSeconds() {
     const auto currentTime = std::chrono::system_clock::now();
     auto tp = currentTime.time_since_epoch() -
               std::chrono::duration_cast<std::chrono::days>(currentTime.time_since_epoch());
-    auto h = std::chrono::duration_cast<std::chrono::hours>(tp);
-    tp -= h;
-    h += std::chrono::duration_cast<std::chrono::hours>(GMT_OFFSET);
-    const auto m = std::chrono::duration_cast<std::chrono::minutes>(tp);
-    tp -= m;
+    tp += std::chrono::duration_cast<std::chrono::hours>(GMT_OFFSET);
     const auto s = std::chrono::duration_cast<std::chrono::seconds>(tp);
 
-    return Sched_Time{static_cast<int>(h.count()), static_cast<int>(m.count()), static_cast<int>(s.count())};
-}
-
-Sched_Event Sched_ConvertEvent(json eventJson) {
-    return Sched_Event{eventJson[0], eventJson[1], eventJson[2], eventJson[3], eventJson[4]};
+    return static_cast<int>(s.count());
 }
 
 const char *Sched_GetEventName(const int event) {
@@ -120,75 +97,66 @@ const char *Sched_GetEventName(const int event) {
     }
 }
 
-const char* Sched_GetCurrentEvent(json schedJson, const bool bLunch) {
-    auto [hours, minutes, seconds] = Sched_GetCurrentTime();
-    const char *currentEventName = nullptr;
-    bool currentEventFound = false;
-    for (json i: schedJson["data"]["schedule"][static_cast<int>(bLunch)]) {
-        auto [event, startH, startM, endH, endM] = Sched_ConvertEvent(i);
-        if (hours > startH && hours < endH && minutes > startM && minutes < endM) {
-            currentEventName = Sched_GetEventName(event);
-            currentEventFound = true;
-            continue;
+Sched_Event Sched_ConvertEvent(json eventJson) {
+    const int startS = static_cast<int>(eventJson[0]) * 60 * 60 + static_cast<int>(eventJson[1]) * 60;
+    const int endS = static_cast<int>(eventJson[3]) * 60 * 60 + static_cast<int>(eventJson[4]) * 60;
+    return Sched_Event{eventJson[2], startS, endS};
+}
+
+Schedule::Schedule(nlohmann::json json) {
+    this->status = json["status"];
+    this->responseTime = std::chrono::system_clock::now().time_since_epoch();
+    std::vector<std::vector<Sched_Event>> schedule;
+    int iteration = 0;
+    for (auto i: json["data"]["schedule"]) {
+        std::vector<Sched_Event> events;
+        for (auto j: json["data"]["schedule"][iteration]) { // NOLINT(*-for-range-copy)
+            events.push_back(Sched_ConvertEvent(j));
         }
-        if (!currentEventFound) {
-            currentEventName = ("Go to " + std::string(Sched_GetEventName(event))).c_str();
+        schedule.push_back(events);
+        iteration++;
+    }
+    this->data = {.id = json["data"]["id"], .msg = json["data"]["msg"], .schedule = schedule};
+    this->lunch = LUNCH_A;
+}
+
+int Schedule::GetSecondsLeft() {
+    const int seconds = Sched_GetCurrentTimeSeconds();
+    int secondsLeft = 0;
+    for (auto [event, startS, endS]: this->data.schedule.at(this->lunch)) {
+        if (seconds > startS && seconds < endS) {
+            secondsLeft = endS - seconds;
+            break;
+        }
+        if (seconds < endS && seconds < startS) {
+            secondsLeft = startS - seconds;
             break;
         }
     }
-
-    return currentEventName;
+    return secondsLeft;
 }
 
-int Sched_GetHrsLeft(json schedJson, const bool bLunch) {
-    auto [hours, minutes, seconds] = Sched_GetCurrentTime();
-    int hoursLeft = 0;
-    bool currentEventFound = false;
-    for (json i: schedJson["data"]["schedule"][static_cast<int>(bLunch)]) {
-        auto [event, startH, startM, endH, endM] = Sched_ConvertEvent(i);
-        if (hours > startH && hours < endH && minutes > startM && minutes < endM) {
-            hoursLeft = endH - hours;
-            currentEventFound = true;
-            continue;
+std::string Schedule::GetCurrentEvent() {
+    const int seconds = Sched_GetCurrentTimeSeconds();
+    std::string eventName;
+    for (auto [event, startS, endS]: this->data.schedule.at(this->lunch)) {
+        if (seconds > startS && seconds < endS) {
+            eventName = Sched_GetEventName(event);
+            break;
         }
-        if (!currentEventFound) {
-            hoursLeft = startH - hours;
+        if (seconds < endS && seconds < startS) {
+            eventName = "Go to " + std::string(Sched_GetEventName(event));
             break;
         }
     }
-    return hoursLeft;
-}
-
-int Sched_GetMinsLeft(json schedJson, const bool bLunch) {
-    auto [hours, minutes, seconds] = Sched_GetCurrentTime();
-    int hoursLeft = 0;
-    bool currentEventFound = false;
-    for (json i: schedJson["data"]["schedule"][static_cast<int>(bLunch)]) {
-        auto [event, startH, startM, endH, endM] = Sched_ConvertEvent(i);
-        if (hours > startH && hours < endH && minutes > startM && minutes < endM) {
-            hoursLeft = endM - minutes;
-            currentEventFound = true;
-            continue;
-        }
-        if (!currentEventFound) {
-            hoursLeft = startM - minutes;
-            break;
-        }
-    }
-    return hoursLeft;
-}
-
-int Sched_GetSecsLeft() {
-    auto [hours, minutes, seconds] = Sched_GetCurrentTime();
-    return 59 - seconds;
+    return eventName;
 }
 
 std::string Sched_PadTime(const int time, const int padLength) {
     if (std::string str = std::to_string(time); str.length() < padLength) {
         str.insert(0, padLength - str.length(), '0');
         return str;
-    }
-    else {
+    } else {
         return str;
     }
 }

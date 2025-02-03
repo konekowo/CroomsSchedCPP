@@ -1,37 +1,41 @@
+#include "Text_util.h"
+
+#include <SDL3_ttf/SDL_ttf.h>
 #include <string>
 #include <unordered_map>
-#include <SDL3_ttf/SDL_ttf.h>
 
-static SDL_Renderer* renderer = nullptr;
-static std::pmr::unordered_map<std::string, SDL_Texture*> textureMap;
 
-void TextUtil_init(SDL_Renderer* _renderer) {
-    renderer = _renderer;
-}
-
-SDL_FRect RenderText(TTF_Font* font, const char* textkey, const char* text, const float x, const float y, const SDL_Color color, const float scale) {
-    SDL_Texture* texture = textureMap[textkey];
+TextManager::TextManager(SDL_Renderer *renderer) { this->renderer = renderer; }
+SDL_FRect TextManager::RenderText(TTF_Font *font, const std::string &textKey, const std::string &text, const float x,
+                                  const float y, const SDL_Color color, const float scale) {
+    TextureData *data = textureMap[textKey];
     bool newTexture = false;
-    if (texture == nullptr) {
-        SDL_Surface* surface = TTF_RenderText_Blended(font, text, 0, color);
-        texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (data == nullptr || data->texture == nullptr || data->text != text || data->color.r != color.r ||
+        data->color.g != color.g || data->color.b != color.b) {
+        if (data != nullptr) {
+            DestroyText(textKey);
+        }
+        SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), 0, color);
+        data = new TextureData{
+                .texture = SDL_CreateTextureFromSurface(renderer, surface), .text = text, .color = color, .font = font};
         SDL_DestroySurface(surface);
         newTexture = true;
     }
-    const SDL_FRect dstRect = {x, y, static_cast<float>(texture->w) * scale, static_cast<float>(texture->h) * scale}; // x, y, w, h
-    SDL_RenderTexture(renderer, texture, nullptr, &dstRect);
+    const SDL_FRect dstRect = {x, y, static_cast<float>(data->texture->w) * scale,
+                               static_cast<float>(data->texture->h) * scale};
+    SDL_RenderTexture(renderer, data->texture, nullptr, &dstRect);
     if (newTexture) {
-        textureMap[textkey] = texture;
+        textureMap[textKey] = data;
     }
     return dstRect;
 }
-
-void DestroyText(const char* textKey) {
-    SDL_Texture* texture = textureMap[textKey];
-    if (texture != nullptr) {
-        SDL_DestroyTexture(texture);
-        texture = nullptr;
+void TextManager::DestroyText(const std::string &textKey) {
+    if (const TextureData *data = textureMap[textKey]; data != nullptr) {
+        if (data->texture != nullptr) {
+            SDL_DestroyTexture(data->texture);
+        }
         textureMap[textKey] = nullptr;
         textureMap.erase(textKey);
+        delete data;
     }
 }
