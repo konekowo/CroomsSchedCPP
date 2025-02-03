@@ -27,6 +27,16 @@ static SDL_Color fontColorSeconds = {255, 255, 255, 100};
 static Schedule *schedule = nullptr;
 static TextManager *textManager = nullptr;
 
+void CalculateWindowPos(SDL_Window *window) {
+    const SDL_DisplayMode *displayMode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window));
+#if (defined(USE_TASKBAR_LEFT_POSITION) && USE_TASKBAR_LEFT_POSITION == true)
+    windowX = *const_cast<int *>(&displayMode->w) - 550;
+#else
+    windowX = 0;
+#endif
+    windowY = *const_cast<int *>(&displayMode->h) - 47;
+}
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
@@ -49,15 +59,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    const SDL_DisplayMode *displayMode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window));
-#if (defined(USE_TASKBAR_LEFT_POSITION) && USE_TASKBAR_LEFT_POSITION == true)
-    windowX = *const_cast<int *>(&displayMode->w) - 550;
-#else
-    windowX = 0;
-#endif
-
-    windowY = *const_cast<int *>(&displayMode->h) - 47;
-
     currentFont = TTF_OpenFont("./assets/fonts/SegoeUI.ttf", 32);
     if (currentFont == nullptr) {
         SDL_Log("TTF_OpenFont() Error: %s", SDL_GetError());
@@ -66,9 +67,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
     textManager = new TextManager(renderer);
 
+    CalculateWindowPos(window);
+
     SDL_SetWindowPosition(window, windowX, windowY);
 
-    SDL_RaiseWindow(window);
+    if (SDL_GetPlatform() == "Windows") {
+        SDL_RaiseWindow(window);
+    }
 
     cpr::Response r = Get(cpr::Url{"https://api.croomssched.tech/today"});
     if (r.status_code != 200) {
@@ -81,7 +86,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
     if (schedule->GetStatus() != "OK" && schedule != nullptr) {
         SDL_Log("Failed to fetch schedule! Error: Expected \"OK\" in JSON file status property, but got %s instead.",
-                schedule->GetStatus());
+                schedule->GetStatus().c_str());
         return SDL_APP_FAILURE;
     }
 
@@ -102,7 +107,10 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
-    SDL_RaiseWindow(window);
+    if (SDL_GetPlatform() == "Windows") {
+        SDL_RaiseWindow(window);
+    }
+    CalculateWindowPos(window);
     if (SDL_GetWindowPosition(window, &currentWinX, &currentWinY)) {
         if (currentWinX != windowX && currentWinY != windowY) {
             SDL_SetWindowPosition(window, windowX, windowY);
@@ -120,8 +128,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     const std::string dayType = schedule->GetData().msg;
     const std::string event = schedule->GetCurrentEvent() + ", Time Left: ";
     const int timeLeft = schedule->GetSecondsLeft();
-    const int minsLeft = timeLeft / 60;
     const int hoursLeft = timeLeft / 60 / 60;
+    const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
     const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
 
     textManager->RenderText(currentFont, "display.dayType", dayType, 10, 5, fontColor, 0.43f);
