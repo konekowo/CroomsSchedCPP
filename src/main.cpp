@@ -1,7 +1,8 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #define USE_TASKBAR_LEFT_POSITION false
-#define WINDOW_WIDTH 250
-#define WINDOW_HEIGHT 47
+#define SCALE 1.0f
+#define WINDOW_WIDTH round((250*SCALE))
+#define WINDOW_HEIGHT round((47*SCALE))
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -34,7 +35,7 @@ void CalculateWindowPos(SDL_Window *window) {
 #else
     windowX = 0;
 #endif
-    windowY = *const_cast<int *>(&displayMode->h) - 47;
+    windowY = *const_cast<int *>(&displayMode->h) - WINDOW_HEIGHT;
 }
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
@@ -132,11 +133,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
     const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
 
-    textManager->RenderText(currentFont, "display.dayType", dayType, 10, 5, fontColor, 0.43f);
+    const SDL_FRect dimensions = textManager->RenderText(currentFont, "dimensionText", "A", INT32_MAX, INT32_MAX, fontColor, 0.43f * SCALE);
+    const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, -12 + dimensions.h, fontColor, 0.43f * SCALE);
 
     // ReSharper disable once CppUseStructuredBinding
     const SDL_FRect eventName =
-            textManager->RenderText(currentFont, "display.classTimeLeft.eventName", event, 10, 22, fontColor, 0.43f);
+            textManager->RenderText(currentFont, "display.classTimeLeft.eventName",
+                event, 10, WINDOW_HEIGHT - 7 - dayTypeText.h, fontColor, 0.43f * SCALE);
 
 
     std::string hrsMins;
@@ -150,12 +153,12 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     // ReSharper disable once CppUseStructuredBinding
     const SDL_FRect hrsMinsDimensions =
             textManager->RenderText(currentFont, "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w,
-                                    eventName.y, fontColor, 0.43f);
+                                    eventName.y, fontColor, 0.43f * SCALE);
 
     const char *secs = (":" + Sched_PadTime(secsLeft, 2)).c_str();
 
     textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
-                            hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f);
+                            hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f * SCALE);
 
 
     SDL_RenderPresent(renderer);
