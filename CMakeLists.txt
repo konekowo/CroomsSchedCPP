@@ -27,7 +27,7 @@ add_executable(CroomsSchedCPP WIN32 src/main.cpp
 add_custom_target(copy_assets
         COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
         "${ASSETS_DIR}"
-        "${CMAKE_BINARY_DIR}/assets"
+        "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/assets"
         COMMENT "Copying assets to build directory"
 )
 

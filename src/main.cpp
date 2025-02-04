@@ -1,14 +1,15 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #define USE_TASKBAR_LEFT_POSITION false
 #define SCALE 1.0f
-#define WINDOW_WIDTH round((250*SCALE))
-#define WINDOW_HEIGHT round((47*SCALE))
+#define WINDOW_WIDTH (int) std::round((250*SCALE))
+#define WINDOW_HEIGHT (int) std::round((47*SCALE))
 #define FETCH_TRIES 50
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <cpr/cpr.h>
+#include <cmath>
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -39,7 +40,7 @@ void CalculateWindowPos(SDL_Window *window) {
 #else
     windowX = 0;
 #endif
-    windowY = static_cast<int>(round(static_cast<float>(displayMode->h) - WINDOW_HEIGHT));
+    windowY = static_cast<int>(std::round(static_cast<float>(displayMode->h) - WINDOW_HEIGHT));
 }
 
 void FetchSchedule() {
@@ -57,6 +58,8 @@ void FetchSchedule() {
         if (schedule->GetStatus() != "OK" && schedule != nullptr) {
             SDL_Log("Failed to fetch schedule! Error: Expected \"OK\" in JSON file status property, but got %s instead.",
                     schedule->GetStatus().c_str());
+            delete schedule;
+            schedule = nullptr;
             return FetchSchedule();
         }
     }, cpr::Url{"https://api.croomssched.tech/today"});
@@ -97,7 +100,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
     SDL_SetWindowPosition(window, windowX, windowY);
 
-    if (SDL_GetPlatform() == "Windows") {
+    if (std::string(SDL_GetPlatform()) == "Windows") {
         SDL_RaiseWindow(window);
     }
 
@@ -120,7 +123,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
-    if (SDL_GetPlatform() == "Windows") {
+    if (std::string(SDL_GetPlatform()) == "Windows") {
         SDL_RaiseWindow(window);
     }
     CalculateWindowPos(window);
@@ -147,7 +150,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
         const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
 
-        const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, WINDOW_HEIGHT - 3 - dimensions.h * 2, fontColor, 0.43f * SCALE);
+        const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, WINDOW_HEIGHT - 6 - dimensions.h * 2, fontColor, 0.43f * SCALE);
 
         // ReSharper disable once CppUseStructuredBinding
         const SDL_FRect eventName =
