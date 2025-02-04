@@ -1,5 +1,5 @@
 include(FetchContent)
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.28)
 project(CroomsSchedCPP)
 
 # set the output directory for built objects.
