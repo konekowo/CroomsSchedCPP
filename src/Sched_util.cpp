@@ -136,6 +136,24 @@ int Schedule::GetSecondsLeft() {
     return secondsLeft;
 }
 
+int Schedule::GetEventSeconds() {
+    const int seconds = Sched_GetCurrentTimeSeconds();
+    int eventSeconds = 0;
+    int lastEndS = 0;
+    for (auto [event, startS, endS]: this->data.schedule.at(this->lunch)) {
+        if (seconds > startS && seconds < endS) {
+            eventSeconds = endS - startS;
+            break;
+        }
+        if (seconds < endS && seconds < startS) {
+            eventSeconds = startS - lastEndS;
+            break;
+        }
+        lastEndS = endS;
+    }
+    return eventSeconds;
+}
+
 std::string Schedule::GetCurrentEvent() {
     const int seconds = Sched_GetCurrentTimeSeconds();
     std::string eventName;

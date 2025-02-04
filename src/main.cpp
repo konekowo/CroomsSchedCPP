@@ -146,6 +146,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const std::string dayType = schedule->GetData().msg;
         const std::string event = schedule->GetCurrentEvent() + ", Time Left: ";
         const int timeLeft = schedule->GetSecondsLeft();
+        const int eventTime = schedule->GetEventSeconds();
         const int hoursLeft = timeLeft / 60 / 60;
         const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
         const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
@@ -175,6 +176,14 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
         textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
                                 hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f * SCALE);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 100);
+        const auto progressBarBG = SDL_FRect{0, static_cast<float>(WINDOW_HEIGHT) - SCALE * 2, static_cast<float>(WINDOW_WIDTH), SCALE * 2};
+        SDL_RenderFillRect(renderer, &progressBarBG);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        const auto progressBar = SDL_FRect{0, static_cast<float>(WINDOW_HEIGHT) - SCALE * 2,
+            static_cast<float>(WINDOW_WIDTH) * (static_cast<float>(eventTime - timeLeft) / static_cast<float>(eventTime)), SCALE * 2};
+        SDL_RenderFillRect(renderer, &progressBar);
     } else {
         std::string loadingText = "Fetching Schedule";
         for (int i = 0; i < elipsesCount; ++i) {

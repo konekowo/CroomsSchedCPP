@@ -31,6 +31,7 @@ public:
     }
     Schedule_Data GetData() { return this->data; }
     int GetSecondsLeft();
+    int GetEventSeconds();
     void SetLunch(const Lunch lunch) { this->lunch = lunch; }
     [[nodiscard]] Lunch GetLunch() const { return this->lunch; }
 };
