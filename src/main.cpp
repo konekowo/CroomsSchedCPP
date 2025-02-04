@@ -3,6 +3,7 @@
 #define SCALE 1.0f
 #define WINDOW_WIDTH round((250*SCALE))
 #define WINDOW_HEIGHT round((47*SCALE))
+#define FETCH_TRIES 50
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -22,6 +23,7 @@ static int windowX = 0;
 static int windowY = 0;
 static int currentWinX;
 static int currentWinY;
+static int fetchTry = 0;
 static TTF_Font *currentFont;
 static SDL_Color fontColor = {255, 255, 255, 255};
 static SDL_Color fontColorSeconds = {255, 255, 255, 100};
@@ -35,7 +37,28 @@ void CalculateWindowPos(SDL_Window *window) {
 #else
     windowX = 0;
 #endif
-    windowY = *const_cast<int *>(&displayMode->h) - WINDOW_HEIGHT;
+    windowY = static_cast<int>(round(static_cast<float>(displayMode->h) - WINDOW_HEIGHT));
+}
+
+void FetchSchedule() {
+    if (fetchTry > FETCH_TRIES) {
+        SDL_Log("Failed to fetch schedule! Exceeded 50 tries, exiting!");
+        exit(1);
+    }
+    auto r = GetCallback([](const cpr::Response& res) {
+        if (res.status_code != 200) {
+            SDL_Log("Failed to fetch schedule! Error: Server returned %s", std::to_string(res.status_code).c_str());
+            return FetchSchedule();
+        }
+        const auto jsonSchedule = json::parse(res.text);
+        schedule = new Schedule(jsonSchedule);
+        if (schedule->GetStatus() != "OK" && schedule != nullptr) {
+            SDL_Log("Failed to fetch schedule! Error: Expected \"OK\" in JSON file status property, but got %s instead.",
+                    schedule->GetStatus().c_str());
+            return FetchSchedule();
+        }
+    }, cpr::Url{"https://api.croomssched.tech/today"});
+    fetchTry++;
 }
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
@@ -76,20 +99,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         SDL_RaiseWindow(window);
     }
 
-    cpr::Response r = Get(cpr::Url{"https://api.croomssched.tech/today"});
-    if (r.status_code != 200) {
-        SDL_Log("Failed to fetch schedule! Error: Server returned %s", std::to_string(r.status_code).c_str());
-        return SDL_APP_FAILURE;
-    }
-
-    const auto jsonSchedule = json::parse(r.text);
-    schedule = new Schedule(jsonSchedule);
-
-    if (schedule->GetStatus() != "OK" && schedule != nullptr) {
-        SDL_Log("Failed to fetch schedule! Error: Expected \"OK\" in JSON file status property, but got %s instead.",
-                schedule->GetStatus().c_str());
-        return SDL_APP_FAILURE;
-    }
+    FetchSchedule();
 
     SDL_Log("Successfully loaded!");
 
@@ -125,40 +135,45 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_RenderClear(renderer);
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-
-    const std::string dayType = schedule->GetData().msg;
-    const std::string event = schedule->GetCurrentEvent() + ", Time Left: ";
-    const int timeLeft = schedule->GetSecondsLeft();
-    const int hoursLeft = timeLeft / 60 / 60;
-    const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
-    const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
-
     const SDL_FRect dimensions = textManager->RenderText(currentFont, "dimensionText", "A", INT32_MAX, INT32_MAX, fontColor, 0.43f * SCALE);
-    const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, -12 + dimensions.h, fontColor, 0.43f * SCALE);
 
-    // ReSharper disable once CppUseStructuredBinding
-    const SDL_FRect eventName =
-            textManager->RenderText(currentFont, "display.classTimeLeft.eventName",
-                event, 10, WINDOW_HEIGHT - 7 - dayTypeText.h, fontColor, 0.43f * SCALE);
+    if (schedule != nullptr) {
+        const std::string dayType = schedule->GetData().msg;
+        const std::string event = schedule->GetCurrentEvent() + ", Time Left: ";
+        const int timeLeft = schedule->GetSecondsLeft();
+        const int hoursLeft = timeLeft / 60 / 60;
+        const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
+        const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
+
+        const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, WINDOW_HEIGHT - 3 - dimensions.h * 2, fontColor, 0.43f * SCALE);
+
+        // ReSharper disable once CppUseStructuredBinding
+        const SDL_FRect eventName =
+                textManager->RenderText(currentFont, "display.classTimeLeft.eventName",
+                    event, 10, WINDOW_HEIGHT - 7 - dayTypeText.h, fontColor, 0.43f * SCALE);
 
 
-    std::string hrsMins;
+        std::string hrsMins;
 
-    if (hoursLeft != 0) {
-        hrsMins = (Sched_PadTime(hoursLeft, 2) + ":" + Sched_PadTime(minsLeft, 2));
+        if (hoursLeft != 0) {
+            hrsMins = Sched_PadTime(hoursLeft, 2) + ":" + Sched_PadTime(minsLeft, 2);
+        } else {
+            hrsMins = Sched_PadTime(minsLeft, 2);
+        }
+
+        // ReSharper disable once CppUseStructuredBinding
+        const SDL_FRect hrsMinsDimensions =
+                textManager->RenderText(currentFont, "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w,
+                                        eventName.y, fontColor, 0.43f * SCALE);
+
+        const char *secs = (":" + Sched_PadTime(secsLeft, 2)).c_str();
+
+        textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
+                                hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f * SCALE);
     } else {
-        hrsMins = Sched_PadTime(minsLeft, 2);
+        textManager->RenderText(currentFont, "display.loading", "Loading...",
+            10, WINDOW_HEIGHT - 7 - dimensions.h, fontColor, 0.43f * SCALE);
     }
-
-    // ReSharper disable once CppUseStructuredBinding
-    const SDL_FRect hrsMinsDimensions =
-            textManager->RenderText(currentFont, "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w,
-                                    eventName.y, fontColor, 0.43f * SCALE);
-
-    const char *secs = (":" + Sched_PadTime(secsLeft, 2)).c_str();
-
-    textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
-                            hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f * SCALE);
 
 
     SDL_RenderPresent(renderer);
