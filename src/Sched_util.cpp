@@ -48,9 +48,9 @@ static constexpr auto EVENT_PSAT_SAT = 110;
 
 int Sched_GetCurrentTimeSeconds() {
     const auto currentTime = std::chrono::system_clock::now();
-    auto tp = currentTime.time_since_epoch() -
-              std::chrono::duration_cast<std::chrono::days>(currentTime.time_since_epoch());
+    auto tp = currentTime.time_since_epoch();
     tp += std::chrono::duration_cast<std::chrono::hours>(GMT_OFFSET);
+    tp -= std::chrono::duration_cast<std::chrono::days>(tp);
     const auto s = std::chrono::duration_cast<std::chrono::seconds>(tp);
 
     return static_cast<int>(s.count());

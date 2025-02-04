@@ -42,7 +42,7 @@ void CalculateWindowPos(SDL_Window *window) {
 
 void FetchSchedule() {
     if (fetchTry > FETCH_TRIES) {
-        SDL_Log("Failed to fetch schedule! Exceeded 50 tries, exiting!");
+        SDL_Log("Failed to fetch schedule! Exceeded %d tries, exiting!", FETCH_TRIES);
         exit(1);
     }
     auto r = GetCallback([](const cpr::Response& res) {
