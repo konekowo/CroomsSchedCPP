@@ -24,6 +24,8 @@ static int windowY = 0;
 static int currentWinX;
 static int currentWinY;
 static int fetchTry = 0;
+static int elipsesCount = 0;
+static int elipsesTimer = 0;
 static TTF_Font *currentFont;
 static SDL_Color fontColor = {255, 255, 255, 255};
 static SDL_Color fontColorSeconds = {255, 255, 255, 100};
@@ -171,8 +173,20 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
                                 hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f * SCALE);
     } else {
-        textManager->RenderText(currentFont, "display.loading", "Loading...",
+        std::string loadingText = "Fetching Schedule";
+        for (int i = 0; i < elipsesCount; ++i) {
+            loadingText += ".";
+        }
+        textManager->RenderText(currentFont, "display.loading", loadingText,
             10, WINDOW_HEIGHT - 7 - dimensions.h, fontColor, 0.43f * SCALE);
+        elipsesTimer += 200;
+        if (elipsesTimer > 400) {
+            elipsesCount++;
+            elipsesTimer = 0;
+        }
+        if (elipsesCount > 3) {
+            elipsesCount = 0;
+        }
     }
 
 
