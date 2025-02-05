@@ -45,6 +45,9 @@ static constexpr auto EVENT_AFTER_SCHOOL = 105;
 static constexpr auto EVENT_END = 106;
 static constexpr auto EVENT_BREAK = 107;
 static constexpr auto EVENT_PSAT_SAT = 110;
+static const SDL_Color NormalColor = {255, 255, 255};
+static const SDL_Color RedColor = {255, 0, 0};
+static const SDL_Color OrangeColor = {255, 127, 39};
 
 int Sched_GetCurrentTimeSeconds() {
     const auto currentTime = std::chrono::system_clock::now();
@@ -176,5 +179,18 @@ std::string Sched_PadTime(const int time, const int padLength) {
         return str;
     } else {
         return str;
+    }
+}
+
+SDL_Color CalculateProgressBarColor(const int secondsRemaining)
+{
+    if (secondsRemaining <= 60) {
+        return RedColor;
+    }
+    else if (secondsRemaining <= 60 * 5) { // 10 Minutes
+        return OrangeColor;
+    }
+    else {
+        return NormalColor;
     }
 }

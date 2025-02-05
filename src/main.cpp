@@ -166,6 +166,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const int hoursLeft = timeLeft / 60 / 60;
         const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
         const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
+        SDL_Color progressBarColor = CalculateProgressBarColor(timeLeft);
 
         const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, static_cast<float>(windowHeight) - 6 - dimensions.h * 2, fontColor, 0.43f * scale);
 
@@ -196,9 +197,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 100);
         const auto progressBarBG = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2, static_cast<float>(windowWidth), scale * 2};
         SDL_RenderFillRect(renderer, &progressBarBG);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(renderer, progressBarColor.r, progressBarColor.g, progressBarColor.b, 255);
         const auto progressBar = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2,
-            static_cast<float>(windowWidth) * (static_cast<float>(eventTime - timeLeft) / static_cast<float>(eventTime)), scale * 2};
+            static_cast<float>(windowWidth) * (static_cast<float>(eventTime - timeLeft) / static_cast<float>(eventTime)), scale * 2 + 10};
         SDL_RenderFillRect(renderer, &progressBar);
     } else {
         std::string loadingText = "Fetching Schedule";

@@ -1,4 +1,5 @@
 #pragma once
+#include <SDL3/SDL_pixels.h>
 #include <chrono>
 #include <nlohmann/json_fwd.hpp>
 
@@ -37,3 +38,4 @@ public:
 };
 
 std::string Sched_PadTime(int time, int padLength);
+SDL_Color CalculateProgressBarColor(int secondsRemaining);
