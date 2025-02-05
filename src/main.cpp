@@ -166,7 +166,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const int hoursLeft = timeLeft / 60 / 60;
         const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
         const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
-        SDL_Color progressBarColor = CalculateProgressBarColor(timeLeft);
+        SDL_Color progressBarColor = Schedule::CalculateProgressBarColor(timeLeft);
 
         const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, static_cast<float>(windowHeight) - 6 - dimensions.h * 2, fontColor, 0.43f * scale);
 
@@ -179,9 +179,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         std::string hrsMins;
 
         if (hoursLeft != 0) {
-            hrsMins = Sched_PadTime(hoursLeft, 2) + ":" + Sched_PadTime(minsLeft, 2);
+            hrsMins = Schedule::PadTime(hoursLeft, 2) + ":" + Schedule::PadTime(minsLeft, 2);
         } else {
-            hrsMins = Sched_PadTime(minsLeft, 2);
+            hrsMins = Schedule::PadTime(minsLeft, 2);
         }
 
         // ReSharper disable once CppUseStructuredBinding
@@ -189,7 +189,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 textManager->RenderText(currentFont, "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w,
                                         eventName.y, fontColor, 0.43f * scale);
 
-        const char *secs = (":" + Sched_PadTime(secsLeft, 2)).c_str();
+        const char *secs = (":" + Schedule::PadTime(secsLeft, 2)).c_str();
 
         textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
                                 hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f * scale);

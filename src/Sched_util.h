@@ -31,11 +31,11 @@ public:
         return this->responseTime;
     }
     Schedule_Data GetData() { return this->data; }
-    int GetSecondsLeft();
-    int GetEventSeconds();
     void SetLunch(const Lunch lunch) { this->lunch = lunch; }
     [[nodiscard]] Lunch GetLunch() const { return this->lunch; }
-};
+    int GetSecondsLeft();
+    int GetEventSeconds();
 
-std::string Sched_PadTime(int time, int padLength);
-SDL_Color CalculateProgressBarColor(int secondsRemaining);
+    static std::string PadTime(int time, int padLength);
+    static SDL_Color CalculateProgressBarColor(int secondsRemaining);
+};

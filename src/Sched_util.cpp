@@ -173,7 +173,7 @@ std::string Schedule::GetCurrentEvent() {
     return eventName;
 }
 
-std::string Sched_PadTime(const int time, const int padLength) {
+std::string Schedule::PadTime(const int time, const int padLength) {
     if (std::string str = std::to_string(time); str.length() < padLength) {
         str.insert(0, padLength - str.length(), '0');
         return str;
@@ -182,7 +182,7 @@ std::string Sched_PadTime(const int time, const int padLength) {
     }
 }
 
-SDL_Color CalculateProgressBarColor(const int secondsRemaining)
+SDL_Color Schedule::CalculateProgressBarColor(const int secondsRemaining)
 {
     if (secondsRemaining <= 60) {
         return RedColor;
