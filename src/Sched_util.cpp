@@ -184,10 +184,10 @@ std::string Schedule::PadTime(const int time, const int padLength) {
 
 SDL_Color Schedule::CalculateProgressBarColor(const int secondsRemaining)
 {
-    if (secondsRemaining <= 60) {
+    if (secondsRemaining <= 60 * 3) { // 3 minutes
         return RedColor;
     }
-    else if (secondsRemaining <= 60 * 5) { // 10 Minutes
+    else if (secondsRemaining <= 60 * 10) { // 10 Minutes
         return OrangeColor;
     }
     else {
