@@ -1,6 +1,13 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #define USE_TASKBAR_LEFT_POSITION false
 #define FETCH_TRIES 50
+#define USE_LARGE_TEXT false
+
+#if USE_LARGE_TEXT == true
+#define BELL_FONT_SIZE 0.75f
+#else
+#define BELL_FONT_SIZE 0.43f
+#endif
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -168,12 +175,18 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
         SDL_Color progressBarColor = Schedule::CalculateProgressBarColor(timeLeft);
 
+#if USE_LARGE_TEXT == true
+        const SDL_FRect eventName = {};
+        const SDL_FRect dayTypeText = {};
+#else
         const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, static_cast<float>(windowHeight) - 6 - dimensions.h * 2, fontColor, 0.43f * scale);
 
         // ReSharper disable once CppUseStructuredBinding
+
         const SDL_FRect eventName =
                 textManager->RenderText(currentFont, "display.classTimeLeft.eventName",
                     event, 10, static_cast<float>(windowHeight) - 7 - dayTypeText.h, fontColor, 0.43f * scale);
+#endif
 
 
         std::string hrsMins;
@@ -187,12 +200,12 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         // ReSharper disable once CppUseStructuredBinding
         const SDL_FRect hrsMinsDimensions =
                 textManager->RenderText(currentFont, "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w,
-                                        eventName.y, fontColor, 0.43f * scale);
+                                        eventName.y, fontColor, BELL_FONT_SIZE * scale);
 
         const char *secs = (":" + Schedule::PadTime(secsLeft, 2)).c_str();
 
         textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
-                                hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, 0.43f * scale);
+                                hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, BELL_FONT_SIZE * scale);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 100);
         const auto progressBarBG = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2, static_cast<float>(windowWidth), scale * 2};
