@@ -200,7 +200,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         // ReSharper disable once CppUseStructuredBinding
         const SDL_FRect hrsMinsDimensions =
                 textManager->RenderText(currentFont, "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w,
-                                        eventName.y, fontColor, BELL_FONT_SIZE * scale);
+                                        eventName.y, progressBarColor, BELL_FONT_SIZE * scale);
 
         const char *secs = (":" + Schedule::PadTime(secsLeft, 2)).c_str();
 
