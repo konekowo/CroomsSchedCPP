@@ -17,10 +17,10 @@ add_subdirectory(vendored/cpr EXCLUDE_FROM_ALL)
 
 
 add_executable(CroomsSchedCPP WIN32 src/main.cpp
-        src/Text_util.cpp
-        src/Text_util.h
-        src/Sched_util.cpp
-        src/Sched_util.h
+        src/TextManager.cpp
+        src/TextManager.h
+        src/Schedule.cpp
+        src/Schedule.h
         src/Settings.cpp
         src/Settings.h
 )

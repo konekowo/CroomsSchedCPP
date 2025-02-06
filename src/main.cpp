@@ -17,9 +17,9 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-#include "Sched_util.h"
+#include "Schedule.h"
 #include "Settings.h"
-#include "Text_util.h"
+#include "TextManager.h"
 
 using json = nlohmann::json;
 static SDL_Window *window = nullptr;
