@@ -26,7 +26,12 @@ void Settings::Save() {
 
 void Settings::Load() {
     std::ifstream jsonFile(saveFilePath);
+    if (!std::filesystem::exists(saveFilePath)) return;
+
     auto settingsJson = nlohmann::json::parse(jsonFile);
+
+    if (!settingsJson) return;
+
     if (settingsJson["theme"].is_number_integer()) {
         this->theme = settingsJson["theme"];
     }
