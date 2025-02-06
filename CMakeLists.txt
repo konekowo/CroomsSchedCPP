@@ -21,6 +21,8 @@ add_executable(CroomsSchedCPP WIN32 src/main.cpp
         src/Text_util.h
         src/Sched_util.cpp
         src/Sched_util.h
+        src/Settings.cpp
+        src/Settings.h
 )
 
 
@@ -30,6 +32,7 @@ add_custom_target(copy_assets
         "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/assets"
         COMMENT "Copying assets to build directory"
 )
+
 
 add_dependencies(CroomsSchedCPP copy_assets)
 

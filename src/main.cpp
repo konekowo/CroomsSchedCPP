@@ -1,5 +1,6 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #define USE_TASKBAR_LEFT_POSITION false
+#define SETTINGS_FILE_PATH "./settings.json"
 #define FETCH_TRIES 50
 #define USE_LARGE_TEXT false
 
@@ -17,6 +18,7 @@
 #include <string>
 
 #include "Sched_util.h"
+#include "Settings.h"
 #include "Text_util.h"
 
 using json = nlohmann::json;
@@ -35,9 +37,13 @@ static int currentWinHeight;
 static int fetchTry = 0;
 static int elipsesCount = 0;
 static int elipsesTimer = 0;
+static int lastTimeLeft = 0;
+static int redColor = false;
+static bool isFetching = false;
+static Settings *settings;
 static TTF_Font *currentFont;
-static SDL_Color fontColor = {255, 255, 255, 255};
-static SDL_Color fontColorSeconds = {255, 255, 255, 100};
+static SDL_Color fontColor;
+static SDL_Color fontColorSeconds;
 static Schedule *schedule = nullptr;
 static TextManager *textManager = nullptr;
 
@@ -55,7 +61,7 @@ void CalculateWindowPosAndSize(SDL_Window *window) {
     windowY = static_cast<int>(std::round(static_cast<float>(displayMode->h) - static_cast<float>(windowHeight)));
 }
 
-void FetchSchedule() {
+void FetchSchedule0() {
     if (fetchTry > FETCH_TRIES) {
         SDL_Log("Failed to fetch schedule! Exceeded %d tries, exiting!", FETCH_TRIES);
         exit(1);
@@ -63,22 +69,33 @@ void FetchSchedule() {
     auto r = GetCallback([](const cpr::Response& res) {
         if (res.status_code != 200) {
             SDL_Log("Failed to fetch schedule! Error: Server returned %s", std::to_string(res.status_code).c_str());
-            return FetchSchedule();
+            return FetchSchedule0();
         }
         const auto jsonSchedule = json::parse(res.text);
-        schedule = new Schedule(jsonSchedule);
+        schedule = new Schedule(jsonSchedule, settings);
         if (schedule->GetStatus() != "OK" && schedule != nullptr) {
             SDL_Log("Failed to fetch schedule! Error: Expected \"OK\" in JSON file status property, but got %s instead.",
                     schedule->GetStatus().c_str());
             delete schedule;
             schedule = nullptr;
-            return FetchSchedule();
+            return FetchSchedule0();
         }
+        isFetching = false;
     }, cpr::Url{"https://api.croomssched.tech/today"});
     fetchTry++;
 }
 
+void FetchSchedule() {
+    if (!isFetching) {
+        isFetching = true;
+        FetchSchedule0();
+    }
+}
+
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
+    settings = new Settings(SETTINGS_FILE_PATH);
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -175,10 +192,29 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
         SDL_Color progressBarColor = Schedule::CalculateProgressBarColor(timeLeft);
 
+        if (timeLeft < 60) {
+            if (timeLeft != lastTimeLeft) {
+                redColor = !redColor;
+            }
+        } else if (timeLeft < 300) {
+            redColor = true;
+        } else {
+            redColor = false;
+        }
+
+        if (redColor) {
+            fontColor = {255, 100, 100, 255};
+            fontColorSeconds = {255, 100, 100, 100};
+        } else {
+            fontColor = {255, 255, 255, 255};
+            fontColorSeconds = {255, 255, 255, 100};
+        }
+
 #if USE_LARGE_TEXT == true
         const SDL_FRect eventName = {};
         const SDL_FRect dayTypeText = {};
 #else
+        // ReSharper disable once CppUseStructuredBinding
         const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, static_cast<float>(windowHeight) - 6 - dimensions.h * 2, fontColor, 0.43f * scale);
 
         // ReSharper disable once CppUseStructuredBinding
@@ -207,14 +243,18 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
                                 hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, BELL_FONT_SIZE * scale);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 100);
+        SDL_SetRenderDrawColor(renderer, fontColorSeconds.r, fontColorSeconds.g, fontColorSeconds.b, fontColorSeconds.a);
         const auto progressBarBG = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2, static_cast<float>(windowWidth), scale * 2};
         SDL_RenderFillRect(renderer, &progressBarBG);
         SDL_SetRenderDrawColor(renderer, progressBarColor.r, progressBarColor.g, progressBarColor.b, 255);
         const auto progressBar = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2,
             static_cast<float>(windowWidth) * (static_cast<float>(eventTime - timeLeft) / static_cast<float>(eventTime)), scale * 2 + 10};
         SDL_RenderFillRect(renderer, &progressBar);
+
+        lastTimeLeft = timeLeft;
     } else {
+        fontColor = {255, 255, 255, 255};
+        fontColorSeconds = {255, 255, 255, 100};
         std::string loadingText = "Fetching Schedule";
         for (int i = 0; i < elipsesCount; ++i) {
             loadingText += ".";

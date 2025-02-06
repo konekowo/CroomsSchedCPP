@@ -1,7 +1,3 @@
-//
-// Created by kone on 2/1/2025.
-//
-
 #include "Sched_util.h"
 
 #include <chrono>
@@ -106,7 +102,7 @@ Sched_Event Sched_ConvertEvent(json eventJson) {
     return Sched_Event{eventJson[2], startS, endS};
 }
 
-Schedule::Schedule(nlohmann::json json) {
+Schedule::Schedule(nlohmann::json json, Settings* settings) {
     this->status = json["status"];
     this->responseTime = std::chrono::system_clock::now().time_since_epoch();
     std::vector<std::vector<Sched_Event>> schedule;
@@ -120,14 +116,14 @@ Schedule::Schedule(nlohmann::json json) {
         iteration++;
     }
     this->data = {.id = json["data"]["id"], .msg = json["data"]["msg"], .schedule = schedule};
-    this->lunch = LUNCH_A;
+    this->settings = settings;
 }
 
 int Schedule::GetSecondsLeft() {
     const int seconds = Sched_GetCurrentTimeSeconds();
     int secondsLeft = 0;
-    for (auto [event, startS, endS]: this->data.schedule.at(this->lunch)) {
-        if (seconds > startS && seconds < endS) {
+    for (auto [event, startS, endS]: this->data.schedule.at(this->settings->currentLunch)) {
+        if (seconds >= startS && seconds <= endS) {
             secondsLeft = endS - seconds;
             break;
         }
@@ -143,8 +139,8 @@ int Schedule::GetEventSeconds() {
     const int seconds = Sched_GetCurrentTimeSeconds();
     int eventSeconds = 0;
     int lastEndS = 0;
-    for (auto [event, startS, endS]: this->data.schedule.at(this->lunch)) {
-        if (seconds > startS && seconds < endS) {
+    for (auto [event, startS, endS]: this->data.schedule.at(this->settings->currentLunch)) {
+        if (seconds >= startS && seconds <= endS) {
             eventSeconds = endS - startS;
             break;
         }
@@ -160,7 +156,7 @@ int Schedule::GetEventSeconds() {
 std::string Schedule::GetCurrentEvent() {
     const int seconds = Sched_GetCurrentTimeSeconds();
     std::string eventName;
-    for (auto [event, startS, endS]: this->data.schedule.at(this->lunch)) {
+    for (auto [event, startS, endS]: this->data.schedule.at(this->settings->currentLunch)) {
         if (seconds > startS && seconds < endS) {
             eventName = Sched_GetEventName(event);
             break;
