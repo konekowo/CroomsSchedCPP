@@ -1,6 +1,7 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #define USE_TASKBAR_LEFT_POSITION false
 #define SETTINGS_FILE_PATH "./settings.json"
+#define SCHEDULE_JSON_URL "https://api.croomssched.tech/today"
 #define FETCH_TRIES 50
 #define USE_LARGE_TEXT false
 
@@ -22,6 +23,9 @@
 #include "TextManager.h"
 
 using json = nlohmann::json;
+
+static const auto GMT_OFFSET = std::chrono::hours(-5);
+
 static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
 
@@ -37,13 +41,9 @@ static int currentWinHeight;
 static int fetchTry = 0;
 static int elipsesCount = 0;
 static int elipsesTimer = 0;
-static int lastTimeLeft = 0;
-static int redColor = false;
 static bool isFetching = false;
 static Settings *settings;
 static TTF_Font *currentFont;
-static SDL_Color fontColor;
-static SDL_Color fontColorSeconds;
 static Schedule *schedule = nullptr;
 static TextManager *textManager = nullptr;
 
@@ -81,7 +81,7 @@ void FetchSchedule0() {
             return FetchSchedule0();
         }
         isFetching = false;
-    }, cpr::Url{"https://api.croomssched.tech/today"});
+    }, cpr::Url{SCHEDULE_JSON_URL});
     fetchTry++;
 }
 
@@ -117,7 +117,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    currentFont = TTF_OpenFont("./assets/fonts/SegoeUI.ttf", 32);
+    currentFont = TTF_OpenFont(settings->fontLocation.c_str(), 32);
     if (currentFont == nullptr) {
         SDL_Log("TTF_OpenFont() Error: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -158,6 +158,29 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         SDL_RaiseWindow(window);
     }
 
+    SDL_Color fontColor;
+    switch (settings->theme) {
+        case LIGHT:
+            fontColor = {0, 0, 0, 255};
+            break;
+        case DARK:
+        default:
+            fontColor = {255, 255, 255, 255};
+            break;
+    }
+
+    if (schedule != nullptr && !isFetching) {
+        const auto resTime = std::chrono::duration_cast<std::chrono::days>(schedule->GetResponseTime());
+        // give the server 5 seconds to make sure it returns the correct schedule
+        if (const auto now =
+                    std::chrono::duration_cast<std::chrono::days>(
+                    std::chrono::system_clock::now().time_since_epoch() + GMT_OFFSET - std::chrono::seconds(5) );
+            now > resTime) {
+            SDL_Log("Current Schedule is outdated. Fetching new schedule!");
+            FetchSchedule();
+        }
+    }
+
     scale = SDL_GetWindowDisplayScale(window);
     CalculateWindowPosAndSize(window);
     SDL_SetWindowSize(window, windowWidth, windowHeight);
@@ -182,7 +205,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     // ReSharper disable once CppUseStructuredBinding
     const SDL_FRect dimensions = textManager->RenderText(currentFont, "dimensionText", "A", INT32_MAX, INT32_MAX, fontColor, 0.43f * scale);
 
-    if (schedule != nullptr) {
+    if (schedule != nullptr && !isFetching) {
         const std::string dayType = schedule->GetData().msg;
         const std::string event = schedule->GetCurrentEvent() + ", Time Left: ";
         const int timeLeft = schedule->GetSecondsLeft();
@@ -190,38 +213,20 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const int hoursLeft = timeLeft / 60 / 60;
         const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
         const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
-        SDL_Color progressBarColor = Schedule::CalculateProgressBarColor(timeLeft);
-
-        if (timeLeft < 60) {
-            if (timeLeft != lastTimeLeft) {
-                redColor = !redColor;
-            }
-        } else if (timeLeft < 300) {
-            redColor = true;
-        } else {
-            redColor = false;
-        }
-
-        if (redColor) {
-            fontColor = {255, 100, 100, 255};
-            fontColorSeconds = {255, 100, 100, 100};
-        } else {
-            fontColor = {255, 255, 255, 255};
-            fontColorSeconds = {255, 255, 255, 100};
-        }
+        SDL_Color schedColor = schedule->CalculateProgressBarColor(timeLeft);
 
 #if USE_LARGE_TEXT == true
-        const SDL_FRect eventName = {};
+        const SDL_FRect eventName = {5, 0, 0, 0};
         const SDL_FRect dayTypeText = {};
 #else
         // ReSharper disable once CppUseStructuredBinding
-        const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, static_cast<float>(windowHeight) - 6 - dimensions.h * 2, fontColor, 0.43f * scale);
+        const SDL_FRect dayTypeText = textManager->RenderText(currentFont, "display.dayType", dayType, 10, static_cast<float>(windowHeight) - 6 - dimensions.h * 2, schedColor, 0.43f * scale);
 
         // ReSharper disable once CppUseStructuredBinding
 
         const SDL_FRect eventName =
                 textManager->RenderText(currentFont, "display.classTimeLeft.eventName",
-                    event, 10, static_cast<float>(windowHeight) - 7 - dayTypeText.h, fontColor, 0.43f * scale);
+                    event, 10, static_cast<float>(windowHeight) - 7 - dayTypeText.h, schedColor, 0.43f * scale);
 #endif
 
 
@@ -236,25 +241,21 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         // ReSharper disable once CppUseStructuredBinding
         const SDL_FRect hrsMinsDimensions =
                 textManager->RenderText(currentFont, "display.classTimeLeft.HrsMins", hrsMins, eventName.x + eventName.w,
-                                        eventName.y, progressBarColor, BELL_FONT_SIZE * scale);
+                                        eventName.y, schedColor, BELL_FONT_SIZE * scale);
 
         const char *secs = (":" + Schedule::PadTime(secsLeft, 2)).c_str();
 
         textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
-                                hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, fontColorSeconds, BELL_FONT_SIZE * scale);
+                                hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, {schedColor.r, schedColor.g, schedColor.b, 100}, BELL_FONT_SIZE * scale);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(renderer, fontColorSeconds.r, fontColorSeconds.g, fontColorSeconds.b, fontColorSeconds.a);
+        SDL_SetRenderDrawColor(renderer, schedColor.r, schedColor.g, schedColor.b, 100);
         const auto progressBarBG = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2, static_cast<float>(windowWidth), scale * 2};
         SDL_RenderFillRect(renderer, &progressBarBG);
-        SDL_SetRenderDrawColor(renderer, progressBarColor.r, progressBarColor.g, progressBarColor.b, 255);
+        SDL_SetRenderDrawColor(renderer, schedColor.r, schedColor.g, schedColor.b, schedColor.a);
         const auto progressBar = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2,
             static_cast<float>(windowWidth) * (static_cast<float>(eventTime - timeLeft) / static_cast<float>(eventTime)), scale * 2 + 10};
         SDL_RenderFillRect(renderer, &progressBar);
-
-        lastTimeLeft = timeLeft;
     } else {
-        fontColor = {255, 255, 255, 255};
-        fontColorSeconds = {255, 255, 255, 100};
         std::string loadingText = "Fetching Schedule";
         for (int i = 0; i < elipsesCount; ++i) {
             loadingText += ".";
@@ -270,7 +271,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             elipsesCount = 0;
         }
     }
-
 
     SDL_RenderPresent(renderer);
 

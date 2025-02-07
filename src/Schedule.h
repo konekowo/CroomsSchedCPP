@@ -22,7 +22,8 @@ class Schedule {
     std::chrono::duration<long long, std::ratio<1, 1000000000>> responseTime{};
     Schedule_Data data;
     Settings* settings;
-
+    const char* GetEventName(int event) const;
+    const char* GetEventAliasName(const char* eventName) const;
 public:
     explicit Schedule(nlohmann::json json, Settings* settings);
     std::string GetCurrentEvent();
@@ -34,5 +35,5 @@ public:
     int GetSecondsLeft();
     int GetEventSeconds();
     static std::string PadTime(int time, int padLength);
-    static SDL_Color CalculateProgressBarColor(int secondsRemaining);
+    SDL_Color CalculateProgressBarColor(int secondsRemaining);
 };

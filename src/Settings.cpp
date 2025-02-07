@@ -21,7 +21,7 @@ void Settings::Save() {
     settingsJson["periodAliases"] = periodAliases;
 
     std::ofstream jsonFile(saveFilePath);
-    jsonFile << settingsJson;
+    jsonFile << std::setw(4) << settingsJson;
 }
 
 void Settings::Load() {
@@ -29,8 +29,6 @@ void Settings::Load() {
     if (!std::filesystem::exists(saveFilePath)) return;
 
     auto settingsJson = nlohmann::json::parse(jsonFile);
-
-    if (!settingsJson) return;
 
     if (settingsJson["theme"].is_number_integer()) {
         this->theme = settingsJson["theme"];

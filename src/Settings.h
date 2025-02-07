@@ -4,6 +4,7 @@
 
 enum Theme {
     DARK = 0,
+    LIGHT = 1
 };
 enum Lunch {
     LUNCH_A = 0,

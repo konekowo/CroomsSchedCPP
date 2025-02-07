@@ -41,59 +41,63 @@ static constexpr auto EVENT_AFTER_SCHOOL = 105;
 static constexpr auto EVENT_END = 106;
 static constexpr auto EVENT_BREAK = 107;
 static constexpr auto EVENT_PSAT_SAT = 110;
-static const SDL_Color NormalColor = {255, 255, 255};
-static const SDL_Color RedColor = {255, 0, 0};
-static const SDL_Color OrangeColor = {255, 127, 39};
 
 int Sched_GetCurrentTimeSeconds() {
     const auto currentTime = std::chrono::system_clock::now();
     auto tp = currentTime.time_since_epoch();
-    tp += std::chrono::duration_cast<std::chrono::hours>(GMT_OFFSET);
+    tp += GMT_OFFSET;
     tp -= std::chrono::duration_cast<std::chrono::days>(tp);
     const auto s = std::chrono::duration_cast<std::chrono::seconds>(tp);
 
     return static_cast<int>(s.count());
 }
 
-const char *Sched_GetEventName(const int event) {
+const char *Schedule::GetEventName(const int event) const {
     switch (event) {
         case EVENT_NOTHING:
-            return EVENT_STRING_NOTHING;
+            return GetEventAliasName(EVENT_STRING_NOTHING);
         case EVENT_PERIOD1:
-            return EVENT_STRING_PERIOD1;
+            return GetEventAliasName(EVENT_STRING_PERIOD1);
         case EVENT_PERIOD2:
-            return EVENT_STRING_PERIOD2;
+            return GetEventAliasName(EVENT_STRING_PERIOD2);
         case EVENT_PERIOD3:
-            return EVENT_STRING_PERIOD3;
+            return GetEventAliasName(EVENT_STRING_PERIOD3);
         case EVENT_PERIOD4:
-            return EVENT_STRING_PERIOD4;
+            return GetEventAliasName(EVENT_STRING_PERIOD4);
         case EVENT_PERIOD5:
-            return EVENT_STRING_PERIOD5;
+            return GetEventAliasName(EVENT_STRING_PERIOD5);
         case EVENT_PERIOD6:
-            return EVENT_STRING_PERIOD6;
+            return GetEventAliasName(EVENT_STRING_PERIOD6);
         case EVENT_PERIOD7:
-            return EVENT_STRING_PERIOD7;
+            return GetEventAliasName(EVENT_STRING_PERIOD7);
         case EVENT_MORNING:
-            return EVENT_STRING_MORNING;
+            return GetEventAliasName(EVENT_STRING_MORNING);
         case EVENT_WELCOME:
-            return EVENT_STRING_WELCOME;
+            return GetEventAliasName(EVENT_STRING_WELCOME);
         case EVENT_LUNCH:
-            return EVENT_STRING_LUNCH;
+            return GetEventAliasName(EVENT_STRING_LUNCH);
         case EVENT_HOMEROOM:
-            return EVENT_STRING_HOMEROOM;
+            return GetEventAliasName(EVENT_STRING_HOMEROOM);
         case EVENT_DISMISSAL:
-            return EVENT_STRING_DISMISSAL;
+            return GetEventAliasName(EVENT_STRING_DISMISSAL);
         case EVENT_AFTER_SCHOOL:
-            return EVENT_STRING_AFTER_SCHOOL;
+            return GetEventAliasName(EVENT_STRING_AFTER_SCHOOL);
         case EVENT_END:
-            return EVENT_STRING_END;
+            return GetEventAliasName(EVENT_STRING_END);
         case EVENT_BREAK:
-            return EVENT_STRING_BREAK;
+            return GetEventAliasName(EVENT_STRING_BREAK);
         case EVENT_PSAT_SAT:
-            return EVENT_STRING_PSAT_SAT;
+            return GetEventAliasName(EVENT_STRING_PSAT_SAT);
         default:
-            return EVENT_STRING_NOTHING;
+            return GetEventAliasName(EVENT_STRING_NOTHING);
     }
+}
+
+const char *Schedule::GetEventAliasName(const char *eventName) const {
+    if (settings->periodAliases.contains(eventName)) {
+        return settings->periodAliases[eventName].c_str();
+    }
+    return eventName;
 }
 
 Sched_Event Sched_ConvertEvent(json eventJson) {
@@ -104,7 +108,7 @@ Sched_Event Sched_ConvertEvent(json eventJson) {
 
 Schedule::Schedule(nlohmann::json json, Settings* settings) {
     this->status = json["status"];
-    this->responseTime = std::chrono::system_clock::now().time_since_epoch();
+    this->responseTime = std::chrono::system_clock::now().time_since_epoch() + GMT_OFFSET;
     std::vector<std::vector<Sched_Event>> schedule;
     int iteration = 0;
     for (auto i: json["data"]["schedule"]) {
@@ -158,11 +162,11 @@ std::string Schedule::GetCurrentEvent() {
     std::string eventName;
     for (auto [event, startS, endS]: this->data.schedule.at(this->settings->currentLunch)) {
         if (seconds > startS && seconds < endS) {
-            eventName = Sched_GetEventName(event);
+            eventName = GetEventName(event);
             break;
         }
         if (seconds < endS && seconds < startS) {
-            eventName = "Go to " + std::string(Sched_GetEventName(event));
+            eventName = "Go to " + std::string(GetEventName(event));
             break;
         }
     }
@@ -180,13 +184,35 @@ std::string Schedule::PadTime(const int time, const int padLength) {
 
 SDL_Color Schedule::CalculateProgressBarColor(const int secondsRemaining)
 {
+    SDL_Color NormalColor;
+    SDL_Color RedColor;
+    SDL_Color OrangeColor;
+
+    switch (settings->theme) {
+        case LIGHT:
+            NormalColor = {0, 0, 0, 255};
+            RedColor = {255, 100, 100, 255};
+            OrangeColor = {255, 111, 0, 255};
+        break;
+        case DARK:
+        default:
+            NormalColor = {255, 255, 255, 255};
+            RedColor = {255, 100, 100, 255};
+            OrangeColor = {237, 153, 64, 255};
+            break;
+    }
+
+    if (secondsRemaining <= 60) { // 1 minute (flashing red and white)
+        if (secondsRemaining % 2 == 0) {
+            return RedColor;
+        }
+        return NormalColor;
+    }
     if (secondsRemaining <= 60 * 3) { // 3 minutes
         return RedColor;
     }
-    else if (secondsRemaining <= 60 * 10) { // 10 Minutes
+    if (secondsRemaining <= 60 * 10) { // 10 Minutes
         return OrangeColor;
     }
-    else {
-        return NormalColor;
-    }
+    return NormalColor;
 }
