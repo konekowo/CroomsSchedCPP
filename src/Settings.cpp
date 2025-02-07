@@ -45,6 +45,7 @@ void Settings::Load() {
     if (settingsJson["defaultLunch"].is_number_integer()) {
         this->defaultLunch = settingsJson["defaultLunch"];
     }
+    this->currentLunch = this->defaultLunch;
     if (settingsJson["periodAliases"].is_object()) {
         for (const auto &key: this->periodAliases | std::views::keys) {
             if (settingsJson["periodAliases"][key].is_string()) {

@@ -182,8 +182,7 @@ std::string Schedule::PadTime(const int time, const int padLength) {
     }
 }
 
-SDL_Color Schedule::CalculateProgressBarColor(const int secondsRemaining)
-{
+SDL_Color Schedule::CalculateTextColor(const int secondsRemaining) const {
     SDL_Color NormalColor;
     SDL_Color RedColor;
     SDL_Color OrangeColor;
@@ -194,6 +193,41 @@ SDL_Color Schedule::CalculateProgressBarColor(const int secondsRemaining)
             RedColor = {255, 100, 100, 255};
             OrangeColor = {255, 111, 0, 255};
         break;
+        case DARK:
+        default:
+            NormalColor = {255, 255, 255, 255};
+            RedColor = {255, 100, 100, 255};
+            OrangeColor = {237, 153, 64, 255};
+            break;
+    }
+
+    if (secondsRemaining <= 60) { // 1 minute (flashing red and white)
+        if (secondsRemaining % 2 == 0) {
+            return RedColor;
+        }
+        return NormalColor;
+    }
+    if (secondsRemaining <= 60 * 3) { // 3 minutes
+        return RedColor;
+    }
+    if (secondsRemaining <= 60 * 10) { // 10 Minutes
+        return OrangeColor;
+    }
+    return NormalColor;
+}
+
+
+SDL_Color Schedule::CalculateProgressBarColor(const int secondsRemaining) const {
+    SDL_Color NormalColor;
+    SDL_Color RedColor;
+    SDL_Color OrangeColor;
+
+    switch (settings->theme) {
+        case LIGHT:
+            NormalColor = {0,62,146, 255};
+            RedColor = {255, 100, 100, 255};
+            OrangeColor = {255, 111, 0, 255};
+            break;
         case DARK:
         default:
             NormalColor = {255, 255, 255, 255};

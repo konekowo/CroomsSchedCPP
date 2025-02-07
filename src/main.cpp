@@ -213,7 +213,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const int hoursLeft = timeLeft / 60 / 60;
         const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
         const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
-        SDL_Color schedColor = schedule->CalculateProgressBarColor(timeLeft);
+        const SDL_Color schedColor = schedule->CalculateTextColor(timeLeft);
 
 #if USE_LARGE_TEXT == true
         const SDL_FRect eventName = {5, 0, 0, 0};
@@ -244,17 +244,22 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                                         eventName.y, schedColor, BELL_FONT_SIZE * scale);
 
         const char *secs = (":" + Schedule::PadTime(secsLeft, 2)).c_str();
-
-        textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
-                                hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, {schedColor.r, schedColor.g, schedColor.b, 100}, BELL_FONT_SIZE * scale);
+        if (settings->showSeconds) {
+            textManager->RenderText(currentFont, "display.classTimeLeft.Seconds", secs,
+                                    hrsMinsDimensions.x + hrsMinsDimensions.w, hrsMinsDimensions.y, {schedColor.r, schedColor.g, schedColor.b, 100}, BELL_FONT_SIZE * scale);
+        }
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(renderer, schedColor.r, schedColor.g, schedColor.b, 100);
-        const auto progressBarBG = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2, static_cast<float>(windowWidth), scale * 2};
-        SDL_RenderFillRect(renderer, &progressBarBG);
-        SDL_SetRenderDrawColor(renderer, schedColor.r, schedColor.g, schedColor.b, schedColor.a);
-        const auto progressBar = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2,
-            static_cast<float>(windowWidth) * (static_cast<float>(eventTime - timeLeft) / static_cast<float>(eventTime)), scale * 2 + 10};
-        SDL_RenderFillRect(renderer, &progressBar);
+        if (settings->showProgressBar) {
+            // ReSharper disable once CppUseStructuredBinding
+            const SDL_Color progressBarColor = schedule->CalculateProgressBarColor(timeLeft);
+            SDL_SetRenderDrawColor(renderer, progressBarColor.r, progressBarColor.g, progressBarColor.b, 100);
+            const auto progressBarBG = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2, static_cast<float>(windowWidth), scale * 2};
+            SDL_RenderFillRect(renderer, &progressBarBG);
+            SDL_SetRenderDrawColor(renderer, progressBarColor.r, progressBarColor.g, progressBarColor.b, progressBarColor.a);
+            const auto progressBar = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2,
+                static_cast<float>(windowWidth) * (static_cast<float>(eventTime - timeLeft) / static_cast<float>(eventTime)), scale * 2 + 10};
+            SDL_RenderFillRect(renderer, &progressBar);
+        }
     } else {
         std::string loadingText = "Fetching Schedule";
         for (int i = 0; i < elipsesCount; ++i) {
