@@ -143,11 +143,26 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 }
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
-    switch (event->type) {
-        case SDL_EVENT_QUIT:
-        case SDL_EVENT_TERMINATING:
-            return SDL_APP_SUCCESS;
-        default:;
+    SDL_WindowID windowID = SDL_GetWindowID(window);
+    if (settings != nullptr) {
+        if (settings->isSettingsOpen()) {
+            settings->PollEvent(event);
+        }
+    }
+    if (event->window.windowID == windowID) {
+        switch (event->type) {
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                if (settings != nullptr) {
+                    if (!settings->isSettingsOpen()) {
+                        settings->OpenSettings();
+                    }
+                }
+            return SDL_APP_CONTINUE;
+            case SDL_EVENT_QUIT:
+            case SDL_EVENT_TERMINATING:
+                return SDL_APP_SUCCESS;
+            default:;
+        }
     }
     return SDL_APP_CONTINUE;
 }
@@ -155,7 +170,13 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
     if (std::string(SDL_GetPlatform()) == "Windows") {
-        SDL_RaiseWindow(window);
+        if (settings != nullptr) {
+            if (!settings->SettingsWindowHasFocus()){
+                SDL_RaiseWindow(window);
+            }
+        } else {
+            SDL_RaiseWindow(window);
+        }
     }
 
     SDL_Color fontColor;
@@ -177,6 +198,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     std::chrono::system_clock::now().time_since_epoch() + GMT_OFFSET - std::chrono::seconds(5) );
             now > resTime) {
             SDL_Log("Current Schedule is outdated. Fetching new schedule!");
+            delete schedule;
+            schedule = nullptr;
             FetchSchedule();
         }
     }
@@ -279,6 +302,12 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
     SDL_RenderPresent(renderer);
 
+    if (settings != nullptr) {
+        if (settings->isSettingsOpen()) {
+            settings->SettingsIterate();
+            return SDL_APP_CONTINUE;
+        }
+    }
     SDL_Delay(200);
     return SDL_APP_CONTINUE;
 }

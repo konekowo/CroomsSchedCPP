@@ -1,4 +1,8 @@
 #pragma once
+#include "TextManager.h"
+
+
+#include <SDL3/SDL_render.h>
 #include <string>
 #include <unordered_map>
 
@@ -14,6 +18,15 @@ enum Lunch {
 class Settings {
     std::string saveFilePath;
     void Load();
+    bool isOpen = false;
+    bool hasFocus = false;
+    SDL_Window *window = nullptr;
+    SDL_Renderer *renderer = nullptr;
+    TextManager *textManager = nullptr;
+    TTF_Font *currentFont = nullptr;
+    float mouseX = 0;
+    float mouseY = 0;
+    std::string currentHovered;
 public:
     Theme theme = DARK;
     bool showProgressBar = true;
@@ -42,5 +55,17 @@ public:
     };
     explicit Settings(const std::string &saveFilePath);
     void Save();
+    bool isSettingsOpen() const {
+        return this->isOpen;
+    }
+    bool SettingsWindowHasFocus() const {
+        return this->hasFocus;
+    }
+    void OpenSettings();
+    void CloseSettings();
+    void PollEvent(SDL_Event* event);
+    void SettingsIterate();
+    void OnMouseDown();
+    bool isHovering(std::string settingsValue, float x, float y, float width, float height);
 };
 
