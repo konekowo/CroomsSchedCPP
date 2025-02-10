@@ -229,13 +229,17 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     const SDL_FRect dimensions = textManager->RenderText(currentFont, "dimensionText", "A", INT32_MAX, INT32_MAX, fontColor, 0.43f * scale);
 
     if (schedule != nullptr && !isFetching) {
-        const std::string dayType = schedule->GetData().msg;
-        const std::string event = schedule->GetCurrentEvent() + ", Time Left: ";
         const int timeLeft = schedule->GetSecondsLeft();
-        const int eventTime = schedule->GetEventSeconds();
+        const int totalEventTime = schedule->GetEventSeconds();
+        const std::string scheduleEventName = schedule->GetCurrentEvent();
+
+        float percentage = ((static_cast<float>(totalEventTime) - static_cast<float>(timeLeft)) / static_cast<float>(totalEventTime)) * 100;
+        const std::string dayType = schedule->GetData().msg;
+        // TODO: add setting to hide percentage
+        const std::string event = std::format("{:.2f}", percentage) + "% - " + scheduleEventName + ", Time Left: ";
         const int hoursLeft = timeLeft / 60 / 60;
-        const int minsLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
-        const int secsLeft = timeLeft - minsLeft * 60 - hoursLeft * 60 * 60;
+        const int minLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
+        const int secsLeft = timeLeft - minLeft * 60 - hoursLeft * 60 * 60;
         const SDL_Color schedColor = schedule->CalculateTextColor(timeLeft);
 
 #if USE_LARGE_TEXT == true
@@ -256,9 +260,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         std::string hrsMins;
 
         if (hoursLeft != 0) {
-            hrsMins = Schedule::PadTime(hoursLeft, 2) + ":" + Schedule::PadTime(minsLeft, 2);
+            hrsMins = Schedule::PadTime(hoursLeft, 2) + ":" + Schedule::PadTime(minLeft, 2);
         } else {
-            hrsMins = Schedule::PadTime(minsLeft, 2);
+            hrsMins = Schedule::PadTime(minLeft, 2);
         }
 
         // ReSharper disable once CppUseStructuredBinding
@@ -280,7 +284,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             SDL_RenderFillRect(renderer, &progressBarBG);
             SDL_SetRenderDrawColor(renderer, progressBarColor.r, progressBarColor.g, progressBarColor.b, progressBarColor.a);
             const auto progressBar = SDL_FRect{0, static_cast<float>(windowHeight) - scale * 2,
-                static_cast<float>(windowWidth) * (static_cast<float>(eventTime - timeLeft) / static_cast<float>(eventTime)), scale * 2 + 10};
+                static_cast<float>(windowWidth) * (static_cast<float>(totalEventTime - timeLeft) / static_cast<float>(totalEventTime)), scale * 2 + 10};
             SDL_RenderFillRect(renderer, &progressBar);
         }
     } else {
