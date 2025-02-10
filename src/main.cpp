@@ -153,9 +153,8 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         switch (event->type) {
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 if (settings != nullptr) {
-                    if (!settings->isSettingsOpen()) {
-                        settings->OpenSettings();
-                    }
+                    settings->OpenSettings();
+                    settings->RaiseWindow();
                 }
             return SDL_APP_CONTINUE;
             case SDL_EVENT_QUIT:
@@ -236,7 +235,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         float percentage = ((static_cast<float>(totalEventTime) - static_cast<float>(timeLeft)) / static_cast<float>(totalEventTime)) * 100;
         const std::string dayType = schedule->GetData().msg;
         // TODO: add setting to hide percentage
-        const std::string event = std::format("{:.2f}", percentage) + "% - " + scheduleEventName + ", Time Left: ";
+        std::string event = scheduleEventName + ", Time Left: ";
+        if (settings->showPercentage) {
+            event = std::format("{:.2f}", percentage) + "% - " + event;
+        }
         const int hoursLeft = timeLeft / 60 / 60;
         const int minLeft = (timeLeft - hoursLeft * 60 * 60) / 60;
         const int secsLeft = timeLeft - minLeft * 60 - hoursLeft * 60 * 60;

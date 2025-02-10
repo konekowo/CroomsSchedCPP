@@ -31,6 +31,7 @@ public:
     Theme theme = DARK;
     bool showProgressBar = true;
     bool showSeconds = true;
+    bool showPercentage = false;
     std::string fontLocation = "./assets/fonts/SegoeUI.ttf";
     Lunch defaultLunch = LUNCH_A;
     Lunch currentLunch = LUNCH_A;
@@ -63,6 +64,7 @@ public:
     }
     void OpenSettings();
     void CloseSettings();
+    void RaiseWindow() const;
     void PollEvent(SDL_Event* event);
     void SettingsIterate();
     void OnMouseDown();
