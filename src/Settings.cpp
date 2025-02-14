@@ -69,7 +69,7 @@ void Settings::Load() {
 void Settings::OpenSettings() {
     if (!this->isOpen) {
         isOpen = true;
-        if (!SDL_CreateWindowAndRenderer("Crooms Bell Schedule Settings", 400, 600, SDL_WINDOW_HIGH_PIXEL_DENSITY,
+        if (!SDL_CreateWindowAndRenderer("Crooms Bell Schedule Settings", 400, 800, SDL_WINDOW_HIGH_PIXEL_DENSITY,
                                          &window, &renderer)) {
             SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
                                          }
@@ -162,6 +162,8 @@ void Settings::SettingsIterate() {
                 ? hoverColor
                 : unSelectedColor, 0.5f);
 
+    /** ---- SHOW PERCENTAGE ---- **/
+
     SDL_FRect showPercentageTitleDimensions = textManager->RenderText(currentFont, "settings.showPercentage.title",
         "Show Percentage: ", 10, lunchBDimensions.y + lunchBDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
     bool showPercentageHovering = isHovering("showPercentage.value", 20, lunchBDimensions.h + lunchBDimensions.y + 5, 380,
@@ -169,6 +171,41 @@ void Settings::SettingsIterate() {
     SDL_FRect showPercentageDimensions = textManager->RenderText(currentFont, "settings.showPercentage.value",
         this->showPercentage ? "On" : "Off", showPercentageTitleDimensions.w + showPercentageTitleDimensions.x,
         lunchBDimensions.y + lunchBDimensions.h + 5,this->showPercentage ? selectedColor : showPercentageHovering? hoverColor: unSelectedColor, 0.5f);
+
+    /** ---- SHOW PROGRESS BAR ---- **/
+
+    SDL_FRect showProgressBarTitleDimensions = textManager->RenderText(currentFont, "settings.showProgressBar.title",
+        "Show Progress Bar: ", 10, showPercentageDimensions.y + showPercentageDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
+    bool showProgressBarHovering = isHovering("showProgressBar.value", 20, showPercentageDimensions.h + showPercentageDimensions.y + 5, 380,
+                         showPercentageDimensions.h);
+    SDL_FRect showProgressBarDimensions = textManager->RenderText(currentFont, "settings.showProgressBar.value",
+        this->showProgressBar ? "On" : "Off", showProgressBarTitleDimensions.w + showProgressBarTitleDimensions.x,
+        showPercentageDimensions.y + showPercentageDimensions.h + 5,
+        this->showProgressBar ? selectedColor : showProgressBarHovering? hoverColor: unSelectedColor, 0.5f);
+
+    /** ---- SHOW SECONDS ---- **/
+
+    SDL_FRect showSecondsTitleDimensions = textManager->RenderText(currentFont, "settings.showSeconds.title",
+        "Show Seconds: ", 10, showProgressBarDimensions.y + showProgressBarDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
+    bool showSecondsHovering = isHovering("showSeconds.value", 20, showProgressBarDimensions.h + showProgressBarDimensions.y + 5, 380,
+                         showProgressBarDimensions.h);
+    SDL_FRect showSecondsDimensions = textManager->RenderText(currentFont, "settings.showSeconds.value",
+        this->showSeconds ? "On" : "Off", showSecondsTitleDimensions.w + showSecondsTitleDimensions.x,
+        showProgressBarDimensions.y + showProgressBarDimensions.h + 5,
+        this->showSeconds ? selectedColor : showSecondsHovering? hoverColor: unSelectedColor, 0.5f);
+
+    /** ---- PERIOD ALIASES ---- **/
+    SDL_FRect periodAliasesTitleDimensions = textManager->RenderText(currentFont, "settings.periodAliases.title",
+        "Period Aliases: ", 10, showSecondsDimensions.y + showSecondsDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
+    float currentY = periodAliasesTitleDimensions.h + periodAliasesTitleDimensions.y + 5;
+    for (const auto& periodAlias : periodAliases) {
+        SDL_FRect periodAliasDimensions = textManager->RenderText(currentFont, "settings.periodAliases.values."
+                                                                               ""
+                                                                               "" + periodAlias.first,
+            periodAlias.first, 20, currentY, {255, 255, 255, 255}, 0.5f);
+        currentY += periodAliasDimensions.h + 5;
+
+    }
 
     SDL_RenderPresent(renderer);
 }
@@ -186,6 +223,12 @@ void Settings::OnMouseDown() {
         this->currentLunch = this->defaultLunch;
     } else if (this->currentHovered == "showPercentage.value") {
         this->showPercentage = !this->showPercentage;
+    }
+    else if (this->currentHovered == "showProgressBar.value") {
+        this->showProgressBar = !this->showProgressBar;
+    }
+    else if (this->currentHovered == "showSeconds.value") {
+        this->showSeconds = !this->showSeconds;
     }
 }
 
