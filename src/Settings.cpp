@@ -120,117 +120,133 @@ bool Settings::isHovering(std::string settingsValue, float x, float y, float wid
     return result;
 }
 
+void Settings::drawBooleanSetting(bool settingValue, const std::string& settingName, const std::string& settingID) {
+    SDL_FRect settingTitle = textManager->RenderText(currentFont, settingID + ".title",
+        settingName + ": ", 10 + currentX, currentY, {255, 255, 255, 255}, 0.5f);
+    bool showPercentageHovering = isHovering(settingID + ".value", 20 + currentX, currentY, 380,
+                         settingTitle.h);
+    textManager->RenderText(currentFont, settingID + ".value",
+        settingValue ? "On" : "Off", settingTitle.w + settingTitle.x,
+        currentY, settingValue ? selectedColor : showPercentageHovering? hoverColor: unSelectedColor, 0.5f);
+    currentY += settingTitle.h + 5;
+}
+
+void Settings::drawOptionsSetting(const std::string& settingName, const std::string& settingID, const std::string& currentValue,
+                                  std::string* values, int valuesLength) {
+    SDL_FRect settingTitle = textManager->RenderText(currentFont, settingID + ".title",
+        settingName + ": ", 10 + currentX, currentY, {255, 255, 255, 255}, 0.5f);
+    currentY += settingTitle.h + 5;
+    for (int i = 0; i < valuesLength; ++i) {
+        std::string valueID = settingID;
+        valueID += ".value." + values[i];
+        SDL_FRect valueOption = textManager->RenderText(currentFont, valueID,
+        values[i], 20 + currentX, currentY,
+        currentValue == values[i] ? selectedColor:
+        isHovering(valueID, 20 + currentX, currentY, 380,
+                         settingTitle.h)
+                    ? hoverColor
+                    : unSelectedColor, 0.5f);
+        currentY += valueOption.h;
+    }
+    currentY += 5;
+}
+
+void Settings::drawTextSetting(const std::string& settingValue, const std::string& settingName, const std::string& settingID) {
+    SDL_FRect settingTitle = textManager->RenderText(currentFont, settingID + ".title",
+        settingName + ": ", 10 + currentX, currentY, {255, 255, 255, 255}, 0.5f);
+
+    SDL_FRect textBoxUnderlineDimensions = {settingTitle.w + settingTitle.x, currentY + settingTitle.h, 390 - settingTitle.x - settingTitle.w, 2};
+
+    if (currentSelectedTextBox == settingID + ".value") {
+        SDL_SetRenderDrawColor(renderer, selectedColor.r, selectedColor.g, selectedColor.b, selectedColor.a);
+    } else if(isHovering(settingID + ".value", textBoxUnderlineDimensions.x, textBoxUnderlineDimensions.y - settingTitle.h,
+        textBoxUnderlineDimensions.w, settingTitle.h)) {
+        SDL_SetRenderDrawColor(renderer, hoverColor.r, hoverColor.g, hoverColor.b, hoverColor.a);
+    }
+    else {
+        SDL_SetRenderDrawColor(renderer, unSelectedColor.r, unSelectedColor.g, unSelectedColor.b, unSelectedColor.a);
+    }
+
+    SDL_RenderFillRect(renderer, &textBoxUnderlineDimensions);
+
+    SDL_FRect settingValueDimensions = textManager->RenderText(currentFont, settingID + ".value",
+        settingValue, settingTitle.w + settingTitle.x, currentY, {255, 255, 255, 255}, 0.5f);
+
+    if (currentSelectedTextBox == settingID + ".value") {
+        SDL_FRect textCursorDimensions = {settingValueDimensions.w + settingValueDimensions.x + 1, currentY, 2, settingTitle.h};
+        SDL_RenderFillRect(renderer, &textCursorDimensions);
+    }
+
+    currentY += settingTitle.h + 5;
+}
+
+
 void Settings::SettingsIterate() {
+    currentY = 5;
     this->currentHovered = "";
     SDL_SetRenderDrawColor(renderer, 15, 15, 20, 255);
     SDL_RenderClear(renderer);
     SDL_FRect titleDimensions = textManager->RenderText(currentFont, "settings.title",
-        "Settings", 10, 5, {255, 255, 255, 255}, 1);
+        "Settings", 10 + currentX, currentY, {255, 255, 255, 255}, 1);
+    currentY += titleDimensions.h + 10;
 
-    /** ---- THEME ---- **/
-    SDL_FRect themeTitleDimensions = textManager->RenderText(currentFont, "settings.theme.title",
-        "Theme:", 10, titleDimensions.y + titleDimensions.h + 10, {255, 255, 255, 255}, 0.5f);
-    SDL_FRect themeLightDimensions = textManager->RenderText(currentFont, "settings.theme.value.light",
-        "Light", 20, themeTitleDimensions.y + themeTitleDimensions.h + 5,
-        this->theme == LIGHT ? selectedColor :
-        isHovering("theme.value.light", 20, themeTitleDimensions.h + themeTitleDimensions.y + 5, 380,
-                         themeTitleDimensions.h)
-                    ? hoverColor
-                    : unSelectedColor, 0.5f);
-    SDL_FRect themeDarkDimensions = textManager->RenderText(currentFont, "settings.theme.value.dark",
-    "Dark", 20, themeLightDimensions.y + themeLightDimensions.h, this->theme == DARK ? selectedColor :
-    isHovering("theme.value.dark", 20, themeLightDimensions.h + themeLightDimensions.y, 380,
-                     themeLightDimensions.h)
-                ? hoverColor
-                : unSelectedColor, 0.5f);
+    drawOptionsSetting("Theme", "settings.theme",
+        this->theme == LIGHT ? themeValueStrings[0] : themeValueStrings[1], themeValueStrings, 2);
+    drawOptionsSetting("Lunch", "settings.lunch",
+        this->defaultLunch == LUNCH_A ? lunchValueStrings[0] : lunchValueStrings[1], lunchValueStrings, 2);
 
-    /** ---- LUNCH ---- **/
+    drawBooleanSetting(this->showProgressBar, "Show Progress Bar", "settings.showProgressBar");
+    drawBooleanSetting(this->showPercentage, "Show Percentage", "settings.showPercentage");
+    drawBooleanSetting(this->showSeconds, "Show Seconds", "settings.showSeconds");
 
-    SDL_FRect lunchTitleDimensions = textManager->RenderText(currentFont, "settings.lunch.title",
-        "Default Lunch:", 10, themeDarkDimensions.y + themeDarkDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
-    SDL_FRect lunchADimensions = textManager->RenderText(currentFont, "settings.lunch.value.a",
-        "Lunch A", 20, lunchTitleDimensions.y + lunchTitleDimensions.h + 5,
-        this->defaultLunch == LUNCH_A ? selectedColor :
-        isHovering("lunch.value.a", 20, lunchTitleDimensions.h + lunchTitleDimensions.y + 5, 380,
-                         lunchTitleDimensions.h)
-                    ? hoverColor
-                    : unSelectedColor, 0.5f);
-    SDL_FRect lunchBDimensions = textManager->RenderText(currentFont, "settings.lunch.value.b",
-    "Lunch B", 20, lunchADimensions.y + lunchADimensions.h, this->defaultLunch == LUNCH_B ? selectedColor :
-    isHovering("lunch.value.b", 10, lunchADimensions.h + lunchADimensions.y, 380,
-                     lunchADimensions.h)
-                ? hoverColor
-                : unSelectedColor, 0.5f);
-
-    /** ---- SHOW PERCENTAGE ---- **/
-
-    SDL_FRect showPercentageTitleDimensions = textManager->RenderText(currentFont, "settings.showPercentage.title",
-        "Show Percentage: ", 10, lunchBDimensions.y + lunchBDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
-    bool showPercentageHovering = isHovering("showPercentage.value", 20, lunchBDimensions.h + lunchBDimensions.y + 5, 380,
-                         lunchBDimensions.h);
-    SDL_FRect showPercentageDimensions = textManager->RenderText(currentFont, "settings.showPercentage.value",
-        this->showPercentage ? "On" : "Off", showPercentageTitleDimensions.w + showPercentageTitleDimensions.x,
-        lunchBDimensions.y + lunchBDimensions.h + 5,this->showPercentage ? selectedColor : showPercentageHovering? hoverColor: unSelectedColor, 0.5f);
-
-    /** ---- SHOW PROGRESS BAR ---- **/
-
-    SDL_FRect showProgressBarTitleDimensions = textManager->RenderText(currentFont, "settings.showProgressBar.title",
-        "Show Progress Bar: ", 10, showPercentageDimensions.y + showPercentageDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
-    bool showProgressBarHovering = isHovering("showProgressBar.value", 20, showPercentageDimensions.h + showPercentageDimensions.y + 5, 380,
-                         showPercentageDimensions.h);
-    SDL_FRect showProgressBarDimensions = textManager->RenderText(currentFont, "settings.showProgressBar.value",
-        this->showProgressBar ? "On" : "Off", showProgressBarTitleDimensions.w + showProgressBarTitleDimensions.x,
-        showPercentageDimensions.y + showPercentageDimensions.h + 5,
-        this->showProgressBar ? selectedColor : showProgressBarHovering? hoverColor: unSelectedColor, 0.5f);
-
-    /** ---- SHOW SECONDS ---- **/
-
-    SDL_FRect showSecondsTitleDimensions = textManager->RenderText(currentFont, "settings.showSeconds.title",
-        "Show Seconds: ", 10, showProgressBarDimensions.y + showProgressBarDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
-    bool showSecondsHovering = isHovering("showSeconds.value", 20, showProgressBarDimensions.h + showProgressBarDimensions.y + 5, 380,
-                         showProgressBarDimensions.h);
-    SDL_FRect showSecondsDimensions = textManager->RenderText(currentFont, "settings.showSeconds.value",
-        this->showSeconds ? "On" : "Off", showSecondsTitleDimensions.w + showSecondsTitleDimensions.x,
-        showProgressBarDimensions.y + showProgressBarDimensions.h + 5,
-        this->showSeconds ? selectedColor : showSecondsHovering? hoverColor: unSelectedColor, 0.5f);
-
-    /** ---- PERIOD ALIASES ---- **/
-    SDL_FRect periodAliasesTitleDimensions = textManager->RenderText(currentFont, "settings.periodAliases.title",
-        "Period Aliases: ", 10, showSecondsDimensions.y + showSecondsDimensions.h + 5, {255, 255, 255, 255}, 0.5f);
-    float currentY = periodAliasesTitleDimensions.h + periodAliasesTitleDimensions.y + 5;
-    for (const auto& periodAlias : periodAliases) {
-        SDL_FRect periodAliasDimensions = textManager->RenderText(currentFont, "settings.periodAliases.values."
-                                                                               ""
-                                                                               "" + periodAlias.first,
-            periodAlias.first, 20, currentY, {255, 255, 255, 255}, 0.5f);
-        currentY += periodAliasDimensions.h + 5;
-
+    SDL_FRect periodAliasDimensions = textManager->RenderText(currentFont, "settings.periodAliases.title",
+        "Period Aliases: ", 10 + currentX, currentY, {255, 255, 255, 255}, 0.5f);
+    currentY += periodAliasDimensions.h + 5;
+    currentX += 10;
+    for (const auto& periodAlias : this->periodAliases) {
+        drawTextSetting(periodAlias.second, periodAlias.first, "settings.periodAliases." + periodAlias.first);
     }
+    currentX -= 10;
+
 
     SDL_RenderPresent(renderer);
 }
 
 void Settings::OnMouseDown() {
-    if (this->currentHovered == "theme.value.light") {
+    if (this->currentHovered == "settings.theme.value.Light") {
         this->theme = LIGHT;
-    } else if (this->currentHovered == "theme.value.dark") {
+    } else if (this->currentHovered == "settings.theme.value.Dark") {
         this->theme = DARK;
-    } else if (this->currentHovered == "lunch.value.a") {
+    } else if (this->currentHovered == "settings.lunch.value.Lunch A") {
         this->defaultLunch = LUNCH_A;
         this->currentLunch = this->defaultLunch;
-    } else if (this->currentHovered == "lunch.value.b") {
+    } else if (this->currentHovered == "settings.lunch.value.Lunch B") {
         this->defaultLunch = LUNCH_B;
         this->currentLunch = this->defaultLunch;
-    } else if (this->currentHovered == "showPercentage.value") {
+    } else if (this->currentHovered == "settings.showPercentage.value") {
         this->showPercentage = !this->showPercentage;
-    }
-    else if (this->currentHovered == "showProgressBar.value") {
+    } else if (this->currentHovered == "settings.showProgressBar.value") {
         this->showProgressBar = !this->showProgressBar;
     }
-    else if (this->currentHovered == "showSeconds.value") {
+    else if (this->currentHovered == "settings.showSeconds.value") {
         this->showSeconds = !this->showSeconds;
     }
+    bool selectedTextBox = false;
+    for (const auto &key: this->periodAliases | std::views::keys) {
+        if (this->currentHovered == "settings.periodAliases." + key + ".value") {
+            this->currentSelectedTextBox = "settings.periodAliases." + key + ".value";
+            SDL_StartTextInput(window);
+            selectedTextBox = true;
+        }
+    }
+    if (!selectedTextBox) {
+        if (!this->currentSelectedTextBox.empty()) {
+            SDL_StopTextInput(window);
+        }
+        this->currentSelectedTextBox = "";
+    }
 }
+
 
 
 void Settings::PollEvent(SDL_Event* event) {
@@ -251,9 +267,21 @@ void Settings::PollEvent(SDL_Event* event) {
                 this->mouseY = event->motion.y;
                 break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                this->OnMouseDown();
+                if (event->button.button == SDL_BUTTON_LEFT) {
+                    this->OnMouseDown();
+                }
                 break;
-            default:;
+            case SDL_EVENT_TEXT_INPUT:
+                std::string *settingValue = nullptr;
+                for (auto &[key, value] : this->periodAliases) {
+                    if (this->currentSelectedTextBox == "settings.periodAliases." + key + ".value") {
+                        settingValue = &value;
+                    }
+                }
+                if (settingValue != nullptr) {
+                    settingValue->append(event->text.text);
+                }
+            break;
         }
     }
 }
