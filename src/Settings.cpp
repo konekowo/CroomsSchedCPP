@@ -252,6 +252,12 @@ void Settings::OnMouseDown() {
 void Settings::PollEvent(SDL_Event* event) {
     SDL_WindowID windowID = SDL_GetWindowID(window);
     if (event->window.windowID == windowID) {
+        std::string *stringSetting = nullptr;
+        for (auto &[key, value] : this->periodAliases) {
+            if (this->currentSelectedTextBox == "settings.periodAliases." + key + ".value") {
+                stringSetting = &value;
+            }
+        }
         switch (event->type) {
             case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 this->CloseSettings();
@@ -271,15 +277,18 @@ void Settings::PollEvent(SDL_Event* event) {
                     this->OnMouseDown();
                 }
                 break;
-            case SDL_EVENT_TEXT_INPUT:
-                std::string *settingValue = nullptr;
-                for (auto &[key, value] : this->periodAliases) {
-                    if (this->currentSelectedTextBox == "settings.periodAliases." + key + ".value") {
-                        settingValue = &value;
+            case SDL_EVENT_KEY_DOWN:
+                if(event->key.key == SDLK_BACKSPACE) {
+                    if (stringSetting != nullptr && stringSetting->length() > 1) {
+                        stringSetting->pop_back();
+                    } else if (stringSetting != nullptr) {
+                        *stringSetting = "";
                     }
                 }
-                if (settingValue != nullptr) {
-                    settingValue->append(event->text.text);
+            break;
+            case SDL_EVENT_TEXT_INPUT:
+                if (stringSetting != nullptr) {
+                    stringSetting->append(event->text.text);
                 }
             break;
         }
