@@ -161,7 +161,7 @@ std::string Settings::getTextBoxSetting(const std::string &textBoxID) {
 }
 
 
-void Settings::changeTextBoxSetting(const std::string &textBoxID, std::string str) {
+void Settings::changeTextBoxSetting(const std::string &textBoxID, const std::string& str) {
     for (auto &[key, value] : this->periodAliases) {
         if (textBoxID == "settings.periodAliases." + key + ".value") {
             this->periodAliases[key] = str;
@@ -187,6 +187,7 @@ void Settings::drawTextSetting(const std::string& settingValue, const std::strin
     }
 
     SDL_RenderFillRect(renderer, &textBoxUnderlineDimensions);
+
 
     SDL_FRect settingValueDimensions = textManager->RenderText(currentFont, settingID + ".value",
         settingValue, settingTitle.w + settingTitle.x, currentY, {255, 255, 255, 255}, 0.5f);

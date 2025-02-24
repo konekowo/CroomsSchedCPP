@@ -41,7 +41,7 @@ class Settings {
                             const std::string &currentValue, std::string *values, int valuesLength);
     void drawTextSetting(const std::string& settingValue, const std::string& settingName, const std::string& settingID);
     std::string getTextBoxSetting(const std::string &textBoxID);
-    void changeTextBoxSetting(const std::string &textBoxID, std::string str);
+    void changeTextBoxSetting(const std::string &textBoxID, const std::string& str);
     std::string *themeValueStrings = new std::string[]{"Light", "Dark"};
     std::string *lunchValueStrings = new std::string[]{"Lunch A", "Lunch B"};
 public:
