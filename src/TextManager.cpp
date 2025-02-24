@@ -4,8 +4,6 @@
 #include <string>
 #include <unordered_map>
 
-
-TextManager::TextManager(SDL_Renderer *renderer) { this->renderer = renderer; }
 SDL_FRect TextManager::RenderText(TTF_Font *font, const std::string &textKey, const std::string &text, const float x,
                                   const float y, const SDL_Color color, const float scale) {
     TextureData *data = textureMap[textKey];
@@ -29,6 +27,7 @@ SDL_FRect TextManager::RenderText(TTF_Font *font, const std::string &textKey, co
     }
     return dstRect;
 }
+
 void TextManager::DestroyText(const std::string &textKey) {
     if (const TextureData *data = textureMap[textKey]; data != nullptr) {
         if (data->texture != nullptr) {

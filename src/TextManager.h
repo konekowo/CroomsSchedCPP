@@ -16,7 +16,9 @@ class TextManager {
     TTF_Font *font = nullptr;
     std::pmr::unordered_map<std::string, TextureData*> textureMap;
 public:
-    explicit TextManager(SDL_Renderer* renderer);
+    explicit TextManager(SDL_Renderer* renderer) {
+        this->renderer = renderer;
+    }
     SDL_FRect RenderText(TTF_Font* font, const std::string& textKey, const std::string& text, float x, float y, SDL_Color color, float scale);
     void DestroyText(const std::string& textKey);
 };

@@ -151,6 +151,25 @@ void Settings::drawOptionsSetting(const std::string& settingName, const std::str
     currentY += 5;
 }
 
+std::string Settings::getTextBoxSetting(const std::string &textBoxID) {
+    for (auto &[key, value] : this->periodAliases) {
+        if (textBoxID == "settings.periodAliases." + key + ".value") {
+            return value;
+        }
+    }
+    return "";
+}
+
+
+void Settings::changeTextBoxSetting(const std::string &textBoxID, std::string str) {
+    for (auto &[key, value] : this->periodAliases) {
+        if (textBoxID == "settings.periodAliases." + key + ".value") {
+            this->periodAliases[key] = str;
+        }
+    }
+}
+
+
 void Settings::drawTextSetting(const std::string& settingValue, const std::string& settingName, const std::string& settingID) {
     SDL_FRect settingTitle = textManager->RenderText(currentFont, settingID + ".title",
         settingName + ": ", 10 + currentX, currentY, {255, 255, 255, 255}, 0.5f);
@@ -252,12 +271,6 @@ void Settings::OnMouseDown() {
 void Settings::PollEvent(SDL_Event* event) {
     SDL_WindowID windowID = SDL_GetWindowID(window);
     if (event->window.windowID == windowID) {
-        std::string *stringSetting = nullptr;
-        for (auto &[key, value] : this->periodAliases) {
-            if (this->currentSelectedTextBox == "settings.periodAliases." + key + ".value") {
-                stringSetting = &value;
-            }
-        }
         switch (event->type) {
             case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 this->CloseSettings();
@@ -279,17 +292,19 @@ void Settings::PollEvent(SDL_Event* event) {
                 break;
             case SDL_EVENT_KEY_DOWN:
                 if(event->key.key == SDLK_BACKSPACE) {
-                    if (stringSetting != nullptr && stringSetting->length() > 1) {
-                        stringSetting->pop_back();
-                    } else if (stringSetting != nullptr) {
-                        *stringSetting = "";
+                    std::string str = getTextBoxSetting(this->currentSelectedTextBox);
+                    if (str.length() > 1) {
+                        str.pop_back();
+                    } else {
+                        str = "";
                     }
+                    changeTextBoxSetting(this->currentSelectedTextBox, str);
                 }
             break;
             case SDL_EVENT_TEXT_INPUT:
-                if (stringSetting != nullptr) {
-                    stringSetting->append(event->text.text);
-                }
+                std::string str = getTextBoxSetting(this->currentSelectedTextBox);
+                str.append(event->text.text);
+                changeTextBoxSetting(this->currentSelectedTextBox, str);
             break;
         }
     }
