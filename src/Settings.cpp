@@ -51,7 +51,9 @@ void Settings::Load() {
         this->showPercentage = settingsJson["showPercentage"];
     }
     if (settingsJson["fontLocation"].is_string()) {
-        this->fontLocation = settingsJson["fontLocation"];
+        if (std::filesystem::exists(settingsJson["fontLocation"])) {
+            this->fontLocation = settingsJson["fontLocation"];
+        }
     }
     if (settingsJson["defaultLunch"].is_number_integer()) {
         this->defaultLunch = settingsJson["defaultLunch"];
@@ -152,6 +154,9 @@ void Settings::drawOptionsSetting(const std::string& settingName, const std::str
 }
 
 std::string Settings::getTextBoxSetting(const std::string &textBoxID) {
+    if (textBoxID == "settings.fontLocation.value") {
+        return this->fontLocation;
+    }
     for (auto &[key, value] : this->periodAliases) {
         if (textBoxID == "settings.periodAliases." + key + ".value") {
             return value;
@@ -162,6 +167,9 @@ std::string Settings::getTextBoxSetting(const std::string &textBoxID) {
 
 
 void Settings::changeTextBoxSetting(const std::string &textBoxID, const std::string& str) {
+    if (textBoxID == "settings.fontLocation.value") {
+        this->fontLocation = str;
+    }
     for (auto &[key, value] : this->periodAliases) {
         if (textBoxID == "settings.periodAliases." + key + ".value") {
             this->periodAliases[key] = str;
@@ -219,6 +227,8 @@ void Settings::SettingsIterate() {
     drawBooleanSetting(this->showPercentage, "Show Percentage", "settings.showPercentage");
     drawBooleanSetting(this->showSeconds, "Show Seconds", "settings.showSeconds");
 
+    drawTextSetting(this->fontLocation, "Font Location", "settings.fontLocation");
+
     SDL_FRect periodAliasDimensions = textManager->RenderText(currentFont, "settings.periodAliases.title",
         "Period Aliases: ", 10 + currentX, currentY, {255, 255, 255, 255}, 0.5f);
     currentY += periodAliasDimensions.h + 5;
@@ -227,7 +237,6 @@ void Settings::SettingsIterate() {
         drawTextSetting(periodAlias.second, periodAlias.first, "settings.periodAliases." + periodAlias.first);
     }
     currentX -= 10;
-
 
     SDL_RenderPresent(renderer);
 }
@@ -258,6 +267,11 @@ void Settings::OnMouseDown() {
             SDL_StartTextInput(window);
             selectedTextBox = true;
         }
+    }
+    if (this->currentHovered == "settings.fontLocation.value") {
+        this->currentSelectedTextBox = "settings.fontLocation.value";
+        SDL_StartTextInput(window);
+        selectedTextBox = true;
     }
     if (!selectedTextBox) {
         if (!this->currentSelectedTextBox.empty()) {
